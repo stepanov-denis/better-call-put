@@ -1,0 +1,17 @@
+[package]
+name = "better-call-put"
+version = "0.1.0"
+edition = "2021"
+authors = ["Denis Stepanov", "<stepanov.d.m@yandex.ru>"]
+description = "Application for trading on the MOEX via the T-Invest API."
+readme = "README.md"
+repository = "https://github.com/stepanov-denis/t-invest-rs"
+license = "MIT"
+keywords = ["moex", "t-invest", "trading"]
+categories = ["finance"]
+
+[dependencies]
+reqwest = { version = "0.12", features = ["json"] }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
