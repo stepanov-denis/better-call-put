@@ -1,6 +1,9 @@
-use std::fs;
+use crate::config::Config;
 use reqwest;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
+use crate::instrument::{InstrumentResponse, InstrumentIdType};
+mod config;
+mod instrument;
 
 //
 // ---------------------------------------------------------------------
@@ -60,9 +63,9 @@ struct Link {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Instrument {
-    uid: String,             // Используем это значение как instrument_uid
+    uid: String, // Используем это значение как instrument_uid
     classCode: String,
-    instrumentType: String,  // Например, "share"
+    instrumentType: String, // Например, "share"
     ticker: String,
     positionUid: String,
     figi: String,
@@ -98,7 +101,7 @@ struct TradingStatus {
     limitOrderAvailableFlag: bool,
     marketOrderAvailableFlag: bool,
     apiTradeAvailableFlag: bool,
-    instrumentUid:String,
+    instrumentUid: String,
     bestpriceOrderAvailableFlag: bool,
     onlyBestPrice: bool,
 }
@@ -110,11 +113,6 @@ struct MarketDataResponse {
 
 //
 // ---------------------------------------------------------------------
-// Конфигурация
-#[derive(Deserialize, Debug)]
-struct Config {
-    api_token: String,
-}
 
 //
 // ---------------------------------------------------------------------
@@ -143,16 +141,20 @@ fn print_instruments_table(instruments: &[Instrument]) {
 
     let separator = format!(
         "+-{:-<col1$}-+-{:-<col2$}-+-{:-<col3$}-+",
-        "", "", "",
+        "",
+        "",
+        "",
         col1 = col1_width,
         col2 = col2_width,
         col3 = col3_width
     );
-    
+
     println!("{}", separator);
     println!(
         "| {:<col1$} | {:<col2$} | {:<col3$} |",
-        "instrumentType", "ticker", "classCode",
+        "instrumentType",
+        "ticker",
+        "classCode",
         col1 = col1_width,
         col2 = col2_width,
         col3 = col3_width
@@ -162,7 +164,9 @@ fn print_instruments_table(instruments: &[Instrument]) {
     for instr in instruments {
         println!(
             "| {:<col1$} | {:<col2$} | {:<col3$} |",
-            instr.instrumentType, instr.ticker, instr.classCode,
+            instr.instrumentType,
+            instr.ticker,
+            instr.classCode,
             col1 = col1_width,
             col2 = col2_width,
             col3 = col3_width
@@ -176,10 +180,7 @@ fn print_instruments_table(instruments: &[Instrument]) {
 // Функция main (асинхронная)
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Чтение файла конфигурации
-    let config_data = fs::read_to_string("config.yaml")?;
-    let config: Config = serde_yaml::from_str(&config_data)?;
-
+    let config = Config::new("config.yaml")?;
     // URL запроса активов
     let assets_url = "https://invest-public-api.tinkoff.ru/rest/tinkoff.public.invest.api.contract.v1.InstrumentsService/GetAssets";
 
@@ -193,7 +194,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = reqwest::Client::new();
 
     // Выполнение POST-запроса для получения активов
-    let response = client.post(assets_url)
+    let response = client
+        .post(assets_url)
         .bearer_auth(&config.api_token)
         .json(&request_body)
         .send()
@@ -201,11 +203,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Десериализация JSON-ответа в структуру AssetsResponse
     let assets_response: AssetsResponse = response.json().await?;
-    println!("Полный ответ сервера (Активы):\n{:#?}", assets_response);
+    // println!("Полный ответ сервера (Активы):\n{:#?}", assets_response);
 
     // Фильтрация инструментов по условиям и вывод таблицей
     let (filtered_instruments, count) = filter_instruments(&assets_response);
-    println!("\nОтфильтрованный список инструментов (classCode = \"TQBR\" и instrumentType = \"share\"):");
+    println!("\nОтфильтрованный список инструментов (classCode = \"TQBR\" и instrumentType = \"share\")");
     println!("Количество отфильтрованных инструментов: {}\n", count);
     print_instruments_table(&filtered_instruments);
 
@@ -219,24 +221,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|instr| instr.uid.clone())
         .collect();
 
-    if instrument_ids.is_empty() {println!("Нет инструментов для запроса торговых статусов.");
-    return Ok(());
-}
+    if instrument_ids.is_empty() {
+        println!("Нет инструментов для запроса торговых статусов.");
+        return Ok(());
+    }
 
-let trading_request = TradingStatusesRequest {
-    instrumentId: instrument_ids,
-};
+    let trading_request = TradingStatusesRequest {
+        instrumentId: instrument_ids,
+    };
 
-// Выполнение POST-запроса для получения торговых статусов
-let md_response = client.post(market_data_url)
-    .bearer_auth(&config.api_token)
-    .json(&trading_request)
-    .send()
-    .await?;
+    // Выполнение POST-запроса для получения торговых статусов
+    let md_response = client
+        .post(market_data_url)
+        .bearer_auth(&config.api_token)
+        .json(&trading_request)
+        .send()
+        .await?;
 
-// Десериализация JSON-ответа в MarketDataResponse
-let market_data: MarketDataResponse = md_response.json().await?;
-println!("\nОтвет сервера на запрос торговых статусов:\n{:#?}", market_data);
+    // Десериализация JSON-ответа в MarketDataResponse
+    let market_data: MarketDataResponse = md_response.json().await?;
+    println!(
+        "\nОтвет сервера на запрос торговых статусов:\n{:#?}",
+        market_data
+    );
 
-Ok(())
+    // for market_data.normal in market_data.normals {
+    //     let idType = InstrumentIdType::Figi;
+    //     let classCode = None;
+    //     let instrument_info = InstrumentResponse::get_instrument_info(&client, idType, filtered_instrument.uid, &config.api_token, classCode).await?;
+    //     println!("{:#?}", instrument_info);
+    // }
+
+    Ok(())
 }
