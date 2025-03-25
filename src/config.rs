@@ -6,6 +6,8 @@ use std::fs;
 #[derive(Deserialize, Debug)]
 pub struct Config {
     pub api_token: String,
+    pub class_code: String,
+    pub instrument_type: String,
 }
 
 impl Config {
