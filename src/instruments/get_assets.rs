@@ -1,7 +1,7 @@
 use crate::models::enums::InstrumentType;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
-use tracing::{info, error, debug};
+use tracing::{debug, error, info};
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub enum InstrumentStatus {
@@ -102,10 +102,10 @@ impl GetAssetsResponse {
         request: GetAssetsRequest,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let url = "https://invest-public-api.tinkoff.ru/rest/tinkoff.public.invest.api.contract.v1.InstrumentsService/GetAssets";
-    
+
         info!("Отправка запроса GetAssets: {:?}", request);
         debug!("URL запроса: {}", url);
-    
+
         let response = match client
             .post(url)
             .bearer_auth(token)
@@ -124,26 +124,25 @@ impl GetAssetsResponse {
         };
 
         let status = response.status();
-    
+
         // Проверяем статус ответа
         if !status.is_success() {
             let error_text = response.text().await.unwrap_or_else(|e| {
                 error!("Не удалось прочитать тело ошибки: {}", e);
                 "Неизвестная ошибка".to_string()
             });
-            
-            error!(
-                "Ошибка запроса: статус {}, текст: {}",
-                status,
-                error_text
-            );
+
+            error!("Ошибка запроса: статус {}, текст: {}", status, error_text);
             return Err(format!("Ошибка API: {} - {}", status, error_text).into());
         }
-    
+
         // Пытаемся десериализовать JSON
         match response.json::<Self>().await {
             Ok(assets_response) => {
-                info!("Успешно десериализован ответ с {} активами", assets_response.assets.len());
+                info!(
+                    "Успешно десериализован ответ с {} активами",
+                    assets_response.assets.len()
+                );
                 Ok(assets_response)
             }
             Err(e) => {

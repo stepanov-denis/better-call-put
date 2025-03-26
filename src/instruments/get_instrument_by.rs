@@ -1,6 +1,6 @@
 use crate::models::enums::InstrumentType;
 use serde::{Deserialize, Serialize};
-use tracing::{info, error};
+use tracing::{error, info};
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub enum InstrumentIdType {
