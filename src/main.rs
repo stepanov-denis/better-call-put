@@ -3,7 +3,10 @@ use crate::config::Config;
 use instruments::get_assets::GetAssetsRequest;
 use instruments::get_assets::GetAssetsResponse;
 use instruments::get_assets::InstrumentStatus;
+use instruments::get_assets::IntoUid;
 use models::enums::InstrumentType;
+use quotes::get_trading_statuses::GetTradingStatusesResponse;
+use quotes::get_trading_statuses::check_instruments_availability;
 use reqwest;
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
@@ -51,10 +54,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         };
 
-    // println!("All asets:\n{:#?}", assets_response);
+    // Вывести все инструменты
+    assets_response.print_instruments();
 
     let filtered_instruments =
-        match Bot::filter_instruments(assets_response, &config.class_code, &config.instrument_type)
+        match assets_response.filter_instruments(&config.class_code, &config.instrument_type)
             .await
         {
             Ok(instruments) => {
@@ -67,7 +71,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         };
 
-    Bot::print_instruments(&filtered_instruments);
+    GetAssetsResponse::print_filtered_instruments(&filtered_instruments);
+
+    check_instruments_availability(&client, &config.api_token, filtered_instruments.into_uids()).await?;
+
+    let trading_statuses = GetTradingStatusesResponse::get_trading_statuses(&client, &config.api_token, filtered_instruments.into_uids()).await?;
 
     Ok(())
 }

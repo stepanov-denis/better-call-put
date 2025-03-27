@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub enum InstrumentType {
     #[serde(rename = "INSTRUMENT_TYPE_UNSPECIFIED")]
     #[default]
