@@ -134,23 +134,13 @@ pub struct GetInstrumentByRequest {
     pub id: String,
 }
 
-impl GetInstrumentByRequest {
-    pub fn new(id_type: InstrumentIdType, class_code: Option<String>, id: String) -> Self {
-        Self {
-            id_type,
-            class_code,
-            id,
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct InstrumentResponse {
     pub instrument: Instrument,
 }
 
 impl InstrumentResponse {
-    pub async fn get_instrument_by(
+    pub async fn _get_instrument_by(
         client: &reqwest::Client,
         api_token: &str,
         request: GetInstrumentByRequest,

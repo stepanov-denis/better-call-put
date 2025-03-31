@@ -147,7 +147,7 @@ impl GetTradingStatusesResponse {
     }
 
     /// Получает полную информацию о статусе инструмента
-    pub fn get_instrument_status(&self, instrument_uid: &str) -> Option<&TradingStatusResponse> {
+    pub fn _get_instrument_status(&self, instrument_uid: &str) -> Option<&TradingStatusResponse> {
         self.trading_statuses
             .iter()
             .find(|status| status.instrument_uid == instrument_uid)
@@ -167,7 +167,7 @@ impl GetTradingStatusesResponse {
 }
 
 // Пример использования:
-pub async fn check_instruments_availability(
+pub async fn _check_instruments_availability(
     client: &reqwest::Client,
     token: &str,
     instrument_ids: Vec<String>,

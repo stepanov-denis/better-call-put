@@ -20,36 +20,35 @@ pub enum IndicatorType {
     SMA,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub enum IndicatorInterval {
     #[serde(rename = "INDICATOR_INTERVAL_UNSPECIFIED")]
-    #[default]
     Unspecified,
-    #[serde(rename = "INDICATOR_INTERVAL_ONE_MINUTE")]
+    #[serde(rename = "INDICATOR_INTERVAL_1_MIN")]
     OneMinute,
-    #[serde(rename = "INDICATOR_INTERVAL_FIVE_MINUTES")]
-    FiveMinutes,
-    #[serde(rename = "INDICATOR_INTERVAL_FIFTEEN_MINUTES")]
-    FifteenMinutes,
-    #[serde(rename = "INDICATOR_INTERVAL_ONE_HOUR")]
-    OneHour,
-    #[serde(rename = "INDICATOR_INTERVAL_ONE_DAY")]
-    OneDay,
     #[serde(rename = "INDICATOR_INTERVAL_2_MIN")]
-    TwoMin,
+    TwoMinutes,
     #[serde(rename = "INDICATOR_INTERVAL_3_MIN")]
-    ThreeMin,
+    ThreeMinutes,
+    #[serde(rename = "INDICATOR_INTERVAL_5_MIN")]
+    FiveMinutes,
     #[serde(rename = "INDICATOR_INTERVAL_10_MIN")]
-    TenMin,
+    TenMinutes,
+    #[serde(rename = "INDICATOR_INTERVAL_15_MIN")]
+    FifteenMinutes,
     #[serde(rename = "INDICATOR_INTERVAL_30_MIN")]
     ThirtyMin,
+    #[serde(rename = "INDICATOR_INTERVAL_1_HOUR")]
+    Hour,
     #[serde(rename = "INDICATOR_INTERVAL_2_HOUR")]
-    TwoHour,
+    TwoHours,
     #[serde(rename = "INDICATOR_INTERVAL_4_HOUR")]
     FourHour,
-    #[serde(rename = "INDICATOR_INTERVAL_WEEK")]
+    #[serde(rename = "INDICATOR_INTERVAL_1_DAY")]
+    Day,
+    #[serde(rename = "INDICATOR_INTERVAL_1_WEEK")]
     Week,
-    #[serde(rename = "INDICATOR_INTERVAL_MONTH")]
+    #[serde(rename = "INDICATOR_INTERVAL_1_MONTH")]
     Month,
 }
 
@@ -165,11 +164,11 @@ impl GetTechAnalysisRequest {
                 let points_per_day = 24 * 60; // точек в день
                 ((required_points as f64 / points_per_day as f64).ceil() as i64).max(1)
             },
-            IndicatorInterval::TwoMin => {
+            IndicatorInterval::TwoMinutes => {
                 let points_per_day = 24 * 30; // точек в день
                 ((required_points as f64 / points_per_day as f64).ceil() as i64).max(1)
             },
-            IndicatorInterval::ThreeMin => {
+            IndicatorInterval::ThreeMinutes => {
                 let points_per_day = 24 * 20;
                 ((required_points as f64 / points_per_day as f64).ceil() as i64).max(1)
             },
@@ -177,7 +176,7 @@ impl GetTechAnalysisRequest {
                 let points_per_day = 24 * 12;
                 ((required_points as f64 / points_per_day as f64).ceil() as i64).max(1)
             },
-            IndicatorInterval::TenMin => {
+            IndicatorInterval::TenMinutes => {
                 let points_per_day = 24 * 6;
                 ((required_points as f64 / points_per_day as f64).ceil() as i64).max(1)
             },
@@ -189,11 +188,11 @@ impl GetTechAnalysisRequest {
                 let points_per_day = 24 * 2;
                 ((required_points as f64 / points_per_day as f64).ceil() as i64).max(2)
             },
-            IndicatorInterval::OneHour => {
+            IndicatorInterval::Hour => {
                 let points_per_day = 24;
                 ((required_points as f64 / points_per_day as f64).ceil() as i64).max(3)
             },
-            IndicatorInterval::TwoHour => {
+            IndicatorInterval::TwoHours => {
                 let points_per_day = 12;
                 ((required_points as f64 / points_per_day as f64).ceil() as i64).max(4)
             },
@@ -201,7 +200,7 @@ impl GetTechAnalysisRequest {
                 let points_per_day = 6;
                 ((required_points as f64 / points_per_day as f64).ceil() as i64).max(8)
             },
-            IndicatorInterval::OneDay => required_points.max(30) as i64,
+            IndicatorInterval::Day => required_points.max(30) as i64,
             IndicatorInterval::Week => (required_points * 7).max(90) as i64,
             IndicatorInterval::Month => (required_points * 30).max(180) as i64,
             IndicatorInterval::Unspecified => required_points.max(30) as i64,
@@ -226,6 +225,45 @@ impl GetTechAnalysisRequest {
             None,
             None,
         )
+    }
+
+    fn _calculate_required_hours(&self, required_points: i32) -> i64 {
+        match self.interval {
+            IndicatorInterval::OneMinute => {
+                (required_points as f64 * 1.0 / 60.0).ceil() as i64
+            }
+            IndicatorInterval::TwoMinutes => {
+                (required_points as f64 * 2.0 / 60.0).ceil() as i64
+            }
+            IndicatorInterval::ThreeMinutes => {
+                (required_points as f64 * 3.0 / 60.0).ceil() as i64
+            }
+            IndicatorInterval::FiveMinutes => {
+                (required_points as f64 * 5.0 / 60.0).ceil() as i64
+            }
+            IndicatorInterval::TenMinutes => {
+                (required_points as f64 * 10.0 / 60.0).ceil() as i64
+            }
+            IndicatorInterval::FifteenMinutes => {
+                (required_points as f64 * 15.0 / 60.0).ceil() as i64
+            }
+            IndicatorInterval::ThirtyMin => {
+                (required_points as f64 * 30.0 / 60.0).ceil() as i64
+            }
+            IndicatorInterval::Hour => {
+                required_points as i64
+            }
+            IndicatorInterval::TwoHours => {
+                required_points as i64 * 2
+            }
+            IndicatorInterval::FourHour => {
+                required_points as i64 * 4
+            }
+            IndicatorInterval::Day => required_points.max(30) as i64 * 24,
+            IndicatorInterval::Week => required_points.max(30) as i64 * 24 * 7,
+            IndicatorInterval::Month => required_points.max(30) as i64 * 24 * 30,
+            IndicatorInterval::Unspecified => required_points.max(30) as i64 * 24,
+        }
     }
 }
 
@@ -285,7 +323,7 @@ impl GetTechAnalysisResponse {
     }
 
     /// Отладочный метод для просмотра всех данных индикатора
-    pub fn debug_print_indicator(&self) {
+    pub fn _debug_print_indicator(&self) {
         for (i, indicator) in self.technical_indicators.iter().enumerate() {
             println!("Индикатор #{}", i + 1);
             println!("  Timestamp: {}", indicator.timestamp);
@@ -299,7 +337,7 @@ impl GetTechAnalysisResponse {
     }
 
     /// Выводит значения EMA для каждого временного интервала
-    pub fn print_ema_values(&self) {
+    pub fn _print_ema_values(&self) {
         if self.technical_indicators.is_empty() {
             println!("Нет данных для отображения");
             return;

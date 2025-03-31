@@ -3,10 +3,9 @@ use serde::{Deserialize, Serialize};
 use std::error::Error;
 use tracing::{debug, error, info};
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub enum InstrumentStatus {
     #[serde(rename = "INSTRUMENT_STATUS_UNSPECIFIED")]
-    #[default]
     Unspecified,
     #[serde(rename = "INSTRUMENT_STATUS_BASE")]
     Base,
@@ -195,7 +194,7 @@ impl GetAssetsResponse {
     }
 
     /// Выводит информацию об инструментах в виде таблицы
-    pub fn print_instruments(&self) {
+    pub fn _print_instruments(&self) {
         let mut all_instruments = Vec::new();
         for asset in &self.assets {
             all_instruments.extend(asset.instruments.iter());
