@@ -152,6 +152,18 @@ impl GetTradingStatusesResponse {
             .iter()
             .find(|status| status.instrument_uid == instrument_uid)
     }
+
+    /// Возвращает список UID инструментов, которые доступны для торговли
+    pub fn get_available_instruments(&self) -> Vec<String> {
+        self.trading_statuses
+            .iter()
+            .filter(|status| {
+                status.api_trade_available_flag
+                    && matches!(status.trading_status, Some(TradingStatus::NormalTrading))
+            })
+            .map(|status| status.instrument_uid.clone())
+            .collect()
+    }
 }
 
 // Пример использования:

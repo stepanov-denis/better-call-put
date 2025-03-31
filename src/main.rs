@@ -54,7 +54,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         };
 
-    // Вывести все инструменты
     assets_response.print_instruments();
 
     let filtered_instruments =
@@ -76,6 +75,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     check_instruments_availability(&client, &config.api_token, filtered_instruments.into_uids()).await?;
 
     let trading_statuses = GetTradingStatusesResponse::get_trading_statuses(&client, &config.api_token, filtered_instruments.into_uids()).await?;
+
+    let available_instruments = trading_statuses.get_available_instruments();
+
+    info!("Доступные инструменты: {:?}", available_instruments);
 
     Ok(())
 }
