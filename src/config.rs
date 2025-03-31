@@ -10,11 +10,10 @@ use std::fs;
 pub struct Config {
     pub api_token: String,
     pub telegram_token: String,
-    pub class_code: String,
-    pub instrument_type: InstrumentType,
     pub scan_interval_seconds: u64,
     pub strategy: StrategyConfig,
     pub assets: AssetsConfig,
+    pub filter: FilterConfig,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -28,6 +27,12 @@ pub struct StrategyConfig {
     pub short_ema_length: i32,
     pub long_ema_length: i32,
     pub interval: IndicatorInterval,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct FilterConfig {
+    pub class_code: String,
+    pub instrument_type: InstrumentType,
 }
 
 impl Config {

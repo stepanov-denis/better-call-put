@@ -9,11 +9,15 @@ touch "config.yaml"
 ```yaml
 api_token: <your_token>
 telegram_token: <your_token>
-class_code: TQBR
-instrument_type: INSTRUMENT_TYPE_SHARE
+filter:
+  class_code: TQBR
+  instrument_type: INSTRUMENT_TYPE_SHARE
 scan_interval_seconds: 300
 strategy:
   short_ema_length: 8
   long_ema_length: 21
   interval: INDICATOR_INTERVAL_4_HOUR
+assets:
+  instrument_type: INSTRUMENT_TYPE_SHARE
+  instrument_status: INSTRUMENT_STATUS_BASE
 ```

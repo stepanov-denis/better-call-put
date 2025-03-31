@@ -87,8 +87,8 @@ impl MarketScanner {
 
         let filtered_instruments = match assets_response
             .filter_instruments(
-                &self.config.class_code,
-                &self.config.instrument_type.as_str()
+                &self.config.filter.class_code,
+                &self.config.filter.instrument_type.as_str()
             )
             .await
         {
