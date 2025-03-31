@@ -1,7 +1,7 @@
 use crate::models::structs::Quotation;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, error, info};
-use chrono::{DateTime, Utc, Timelike, Datelike};
+use chrono;
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub enum IndicatorType {
@@ -146,203 +146,80 @@ impl GetTechAnalysisRequest {
         }
     }
 
-    /// Создает запрос для получения EMA с указанным временным диапазоном в днях
-    pub fn new_ema_with_days_back(
-        instrument_uid: &str,
-        interval: IndicatorInterval,
-        type_of_price: TypeOfPrice,
-        length: i32,
-        days_back: i32,
-    ) -> Self {
-        let now = chrono::Utc::now();
-        let from = now - chrono::Duration::days(days_back as i64);
-        
-        Self::new(
-            IndicatorType::EMA,
-            instrument_uid.to_string(),
-            from.to_rfc3339(),    // передаем String напрямую, без Some()
-            now.to_rfc3339(),     // передаем String напрямую, без Some()
-            interval,
-            type_of_price,
-            length,
-            None,
-            None,
-        )
-    }
-
-    /// Создает запрос для получения EMA с пустым временным диапазоном
-    pub fn new_ema_empty_dates(
+    /// Создает запрос для получения EMA с автоматическим расчетом временного диапазона
+    pub fn new_ema_auto_period(
         instrument_uid: &str,
         interval: IndicatorInterval,
         type_of_price: TypeOfPrice,
         length: i32,
     ) -> Self {
         let now = chrono::Utc::now();
-        let from = now - chrono::Duration::hours(1); // минимальный период - 1 час
         
-        Self::new(
-            IndicatorType::EMA,
-            instrument_uid.to_string(),
-            from.to_rfc3339(),    // передаем String напрямую, без Some()
-            now.to_rfc3339(),     // передаем String напрямую, без Some()
-            interval,
-            type_of_price,
-            length,
-            None,
-            None,
-        )
-    }
-
-    /// Создает запрос для получения EMA с минимальным временным диапазоном
-    pub fn new_ema_minimal(
-        instrument_uid: &str,
-        interval: IndicatorInterval,
-        type_of_price: TypeOfPrice,
-        length: i32,
-    ) -> Self {
-        let now = chrono::Utc::now();
-        let from = now - chrono::Duration::days(1);
+        // Для EMA нам нужно как минимум 2.5 * length точек для формирования индикатора
+        // Добавляем еще 50% для отображения трендов
+        let required_points = (length as f64 * 3.75).ceil() as i32;
         
-        Self::new(
-            IndicatorType::EMA,
-            instrument_uid.to_string(),
-            from.to_rfc3339(),    // передаем String напрямую, без Some()
-            now.to_rfc3339(),     // передаем String напрямую, без Some()
-            interval,
-            type_of_price,
-            length,
-            None,
-            None,
-        )
-    }
-
-    /// Создает запрос на получение технических индикаторов с автоматическим определением временных меток
-    /// для текущего дня с учетом интервала
-    pub fn new_for_current_day(
-        indicator_type: IndicatorType,
-        instrument_uid: String,
-        interval: IndicatorInterval,
-        type_of_price: TypeOfPrice,
-        length: i32,
-        deviation: Option<Deviation>,
-        smoothing: Option<Smoothing>,
-    ) -> Self {
-        let now = chrono::Utc::now();
-        let (from, to) = Self::get_time_range_for_interval(now, &interval);
-
-        Self::new(
-            indicator_type,
-            instrument_uid,
-            from.to_rfc3339(),
-            to.to_rfc3339(),
-            interval,
-            type_of_price,
-            length,
-            deviation,
-            smoothing,
-        )
-    }
-
-    /// Определяет временной диапазон для заданного интервала
-    fn get_time_range_for_interval(now: DateTime<Utc>, interval: &IndicatorInterval) -> (DateTime<Utc>, DateTime<Utc>) {
-        let start_of_day = now
-            .with_hour(0)
-            .unwrap()
-            .with_minute(0)
-            .unwrap()
-            .with_second(0)
-            .unwrap()
-            .with_nanosecond(0)
-            .unwrap();
-
-        match interval {
-            IndicatorInterval::OneMinute | IndicatorInterval::TwoMin | IndicatorInterval::ThreeMin |
-            IndicatorInterval::FiveMinutes | IndicatorInterval::TenMin | IndicatorInterval::FifteenMinutes |
+        // Минимальное количество дней для разных интервалов с учетом required_points
+        let days = match interval {
+            IndicatorInterval::OneMinute => {
+                let points_per_day = 24 * 60; // точек в день
+                ((required_points as f64 / points_per_day as f64).ceil() as i64).max(1)
+            },
+            IndicatorInterval::TwoMin => {
+                let points_per_day = 24 * 30; // точек в день
+                ((required_points as f64 / points_per_day as f64).ceil() as i64).max(1)
+            },
+            IndicatorInterval::ThreeMin => {
+                let points_per_day = 24 * 20;
+                ((required_points as f64 / points_per_day as f64).ceil() as i64).max(1)
+            },
+            IndicatorInterval::FiveMinutes => {
+                let points_per_day = 24 * 12;
+                ((required_points as f64 / points_per_day as f64).ceil() as i64).max(1)
+            },
+            IndicatorInterval::TenMin => {
+                let points_per_day = 24 * 6;
+                ((required_points as f64 / points_per_day as f64).ceil() as i64).max(1)
+            },
+            IndicatorInterval::FifteenMinutes => {
+                let points_per_day = 24 * 4;
+                ((required_points as f64 / points_per_day as f64).ceil() as i64).max(1)
+            },
             IndicatorInterval::ThirtyMin => {
-                // Для минутных интервалов берем текущий час
-                let hour_start = now.with_minute(0).unwrap().with_second(0).unwrap().with_nanosecond(0).unwrap();
-                let hour_end = hour_start + chrono::Duration::hours(1) - chrono::Duration::seconds(1);
-                (hour_start, hour_end)
+                let points_per_day = 24 * 2;
+                ((required_points as f64 / points_per_day as f64).ceil() as i64).max(2)
             },
-            IndicatorInterval::OneHour | IndicatorInterval::TwoHour | IndicatorInterval::FourHour => {
-                // Для часовых интервалов берем текущий день
-                let day_end = start_of_day + chrono::Duration::days(1) - chrono::Duration::seconds(1);
-                (start_of_day, day_end)
+            IndicatorInterval::OneHour => {
+                let points_per_day = 24;
+                ((required_points as f64 / points_per_day as f64).ceil() as i64).max(3)
             },
-            IndicatorInterval::OneDay => {
-                // Для дневного интервала берем текущий день
-                let day_end = start_of_day + chrono::Duration::days(1) - chrono::Duration::seconds(1);
-                (start_of_day, day_end)
+            IndicatorInterval::TwoHour => {
+                let points_per_day = 12;
+                ((required_points as f64 / points_per_day as f64).ceil() as i64).max(4)
             },
-            IndicatorInterval::Week => {
-                // Для недельного интервала берем текущую неделю
-                let week_start = start_of_day - chrono::Duration::days(start_of_day.weekday().num_days_from_monday() as i64);
-                let week_end = week_start + chrono::Duration::days(7) - chrono::Duration::seconds(1);
-                (week_start, week_end)
+            IndicatorInterval::FourHour => {
+                let points_per_day = 6;
+                ((required_points as f64 / points_per_day as f64).ceil() as i64).max(8)
             },
-            IndicatorInterval::Month => {
-                // Для месячного интервала берем текущий месяц
-                let month_start = start_of_day.with_day(1).unwrap();
-                let next_month = if month_start.month() == 12 {
-                    month_start.with_year(month_start.year() + 1).unwrap().with_month(1).unwrap()
-                } else {
-                    month_start.with_month(month_start.month() + 1).unwrap()
-                };
-                let month_end = next_month - chrono::Duration::seconds(1);
-                (month_start, month_end)
-            },
-            IndicatorInterval::Unspecified => {
-                // По умолчанию берем текущий день
-                let day_end = start_of_day + chrono::Duration::days(1) - chrono::Duration::seconds(1);
-                (start_of_day, day_end)
-            }
-        }
-    }
-
-    /// Создает запрос для получения EMA с заданными параметрами
-    pub fn new_ema(
-        instrument_uid: &str,
-        interval: IndicatorInterval,
-        type_of_price: TypeOfPrice,
-        length: i32,
-    ) -> Self {
-        Self::new_for_current_day(
-            IndicatorType::EMA,
-            instrument_uid.to_string(),
-            interval,
-            type_of_price,
-            length,
-            None,    // deviation не нужен для EMA
-            None,    // smoothing не нужен для EMA
-        )
-    }
-
-    /// Создает запрос для получения последних N значений EMA с заданным интервалом
-    pub fn new_ema_last_n(
-        instrument_uid: &str,
-        interval: IndicatorInterval,
-        type_of_price: TypeOfPrice,
-        length: i32,
-        count: i32,  // количество значений, которые хотим получить
-    ) -> Self {
-        let now = chrono::Utc::now();
-        
-        // Вычисляем начальную дату в зависимости от интервала и количества значений
-        let hours_back = match interval {
-            IndicatorInterval::FourHour => 4 * count,
-            IndicatorInterval::TwoHour => 2 * count,
-            IndicatorInterval::OneHour => count,
-            // ... другие интервалы ...
-            _ => 24 * count, // для дневных и более крупных интервалов
+            IndicatorInterval::OneDay => required_points.max(30) as i64,
+            IndicatorInterval::Week => (required_points * 7).max(90) as i64,
+            IndicatorInterval::Month => (required_points * 30).max(180) as i64,
+            IndicatorInterval::Unspecified => required_points.max(30) as i64,
         };
-        
-        let from = now - chrono::Duration::hours(hours_back as i64);
+
+        // Устанавливаем начало периода на начало дня
+        let from = (now - chrono::Duration::days(days))
+            .date_naive()
+            .and_hms_opt(0, 0, 0)
+            .unwrap()
+            .and_local_timezone(chrono::Utc)
+            .unwrap();
         
         Self::new(
             IndicatorType::EMA,
             instrument_uid.to_string(),
-            from.to_rfc3339(),    // передаем String напрямую, без Some()
-            now.to_rfc3339(),     // передаем String напрямую, без Some()
+            from.to_rfc3339(),
+            now.to_rfc3339(),
             interval,
             type_of_price,
             length,
@@ -407,44 +284,6 @@ impl GetTechAnalysisResponse {
         }
     }
 
-    /// Возвращает значения EMA для каждого временного интервала
-    /// Возвращает вектор кортежей (timestamp, ema_value)
-    pub fn get_ema(&self) -> Vec<(String, Quotation)> {
-        self.technical_indicators
-            .iter()
-            .filter_map(|indicator| {
-                // Для EMA используем middle_band как значение EMA
-                indicator.middle_band.as_ref().map(|ema| {
-                    (indicator.timestamp.clone(), (*ema).clone())
-                })
-            })
-            .collect()
-    }
-
-    /// Выводит значения EMA для каждого временного интервала
-    pub fn print_ema_values(&self) {
-        if self.technical_indicators.is_empty() {
-            println!("Нет данных для отображения");
-            return;
-        }
-
-        println!("Всего точек данных: {}", self.technical_indicators.len());
-        
-        for indicator in &self.technical_indicators {
-            // Для EMA значение находится в поле middle_band
-            if let Some(ema) = &indicator.middle_band {
-                println!(
-                    "Время: {}, EMA: {}.{:09}",
-                    indicator.timestamp,
-                    ema.units,
-                    ema.nano.abs()
-                );
-            } else {
-                println!("Время: {}, EMA: нет данных", indicator.timestamp);
-            }
-        }
-    }
-
     /// Отладочный метод для просмотра всех данных индикатора
     pub fn debug_print_indicator(&self) {
         for (i, indicator) in self.technical_indicators.iter().enumerate() {
@@ -456,6 +295,48 @@ impl GetTechAnalysisResponse {
             println!("  Signal: {:?}", indicator.signal);
             println!("  MACD: {:?}", indicator.macd);
             println!("---");
+        }
+    }
+
+    /// Выводит значения EMA для каждого временного интервала
+    pub fn print_ema_values(&self) {
+        if self.technical_indicators.is_empty() {
+            println!("Нет данных для отображения");
+            return;
+        }
+
+        println!("Всего точек данных: {}", self.technical_indicators.len());
+        
+        // Добавляем отладочный вывод первой точки
+        if let Some(first) = self.technical_indicators.first() {
+            println!("Отладка первой точки:");
+            println!("  middle_band: {:?}", first.middle_band);
+            println!("  upper_band: {:?}", first.upper_band);
+            println!("  lower_band: {:?}", first.lower_band);
+            println!("  signal: {:?}", first.signal);
+            println!("  macd: {:?}", first.macd);
+            println!("---");
+        }
+
+        for indicator in &self.technical_indicators {
+            // Пробуем искать EMA в разных полях
+            let ema_value = indicator.middle_band.as_ref()
+                .or(indicator.signal.as_ref())  // пробуем signal если middle_band пусто
+                .or(indicator.macd.as_ref());   // пробуем macd если signal пусто
+
+            match ema_value {
+                Some(ema) => {
+                    println!(
+                        "Время: {}, EMA: {}.{:09}",
+                        indicator.timestamp,
+                        ema.units,
+                        ema.nano.abs()
+                    );
+                }
+                None => {
+                    println!("Время: {}, EMA: нет данных", indicator.timestamp);
+                }
+            }
         }
     }
 }

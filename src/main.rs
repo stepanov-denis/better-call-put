@@ -86,19 +86,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Доступные инструменты: {:?}", available_instruments);
 
     for available_instrument in available_instruments {
-        let request = GetTechAnalysisRequest::new_ema_with_days_back(
+        let request = GetTechAnalysisRequest::new_ema_auto_period(
             &available_instrument,
-            IndicatorInterval::FourHour,
+            IndicatorInterval::OneHour,
             TypeOfPrice::Close,
-            21,
-            7,
+            50,          // только длина EMA
         );
 
         let response = GetTechAnalysisResponse::get_tech_analysis(&client, &config.api_token, request).await?;
 
         println!("\nИнструмент: {}", available_instrument);
-        println!("Значения EMA (4-часовой интервал) за последние 7 дней:");
-        response.debug_print_indicator();
+        println!("Значения EMA (1-часовой интервал):");
+        response.print_ema_values();
         println!("-------------------");
     }
 
