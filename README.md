@@ -1,23 +1,24 @@
 # Better Call Put
 Application for trading on the MOEX via the T-Invest API.
 ## Prerequisites
-* Create a `config.yaml` file
+* Copy `config.example.yaml` in `config.yaml` and add your tokens:
+```bash
+cp config.example.yaml config.yaml
 ```
-touch "config.yaml"
+## Run app in docker locally
+* Run app in the background
+```bash
+docker-compose up -d
 ```
-* Add in your `config.yaml` file
-```yaml
-api_token: <your_token>
-telegram_token: <your_token>
-filter:
-  class_code: TQBR
-  instrument_type: INSTRUMENT_TYPE_SHARE
-scan_interval_seconds: 300
-strategy:
-  short_ema_length: 8
-  long_ema_length: 21
-  interval: INDICATOR_INTERVAL_4_HOUR
-assets:
-  instrument_type: INSTRUMENT_TYPE_SHARE
-  instrument_status: INSTRUMENT_STATUS_BASE
+* View logs:
+```bash
+docker-compose logs -f
+```
+* Stop and remove containers:
+```bash
+docker-compose down
+```
+* Stop and remove containers including volumes:
+```bash
+docker-compose down --volumes
 ```

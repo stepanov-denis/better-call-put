@@ -8,7 +8,7 @@ use std::fs;
 // Конфигурация
 #[derive(Debug, Deserialize, Clone)]
 pub struct Config {
-    pub api_token: String,
+    pub t_token: String,
     pub telegram_token: String,
     pub scan_interval_seconds: u64,
     pub strategy: StrategyConfig,

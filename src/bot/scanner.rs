@@ -74,7 +74,7 @@ impl MarketScanner {
             self.config.assets.instrument_status,
         );
 
-        let assets_response = match GetAssetsResponse::get_assets(&self.client, &self.config.api_token, request).await {
+        let assets_response = match GetAssetsResponse::get_assets(&self.client, &self.config.t_token, request).await {
             Ok(response) => {
                 info!("Успешно получены данные об активах");
                 response
@@ -106,7 +106,7 @@ impl MarketScanner {
 
         let trading_statuses = GetTradingStatusesResponse::get_trading_statuses(
             &self.client,
-            &self.config.api_token,
+            &self.config.t_token,
             filtered_instruments.into_uids(),
         )
         .await?;
@@ -123,7 +123,7 @@ impl MarketScanner {
                 self.config.strategy.interval,
             );
 
-            match strategy.get_trade_signal(&self.client, &self.config.api_token).await {
+            match strategy.get_trade_signal(&self.client, &self.config.t_token).await {
                 Ok(signal) => {
                     info!("Получен сигнал {:?} для инструмента {}", signal, available_instrument);
                     self.notifier.notify_signal(&available_instrument, &signal).await;

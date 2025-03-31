@@ -135,7 +135,7 @@ impl GetTradingStatusesResponse {
     /// 1. Инструмент найден
     /// 2. API торговля доступна (api_trade_available_flag)
     /// 3. Торговый статус NORMAL_TRADING
-    pub fn is_instrument_available(&self, instrument_uid: &str) -> bool {
+    pub fn _is_instrument_available(&self, instrument_uid: &str) -> bool {
         self.trading_statuses
             .iter()
             .find(|status| status.instrument_uid == instrument_uid)
@@ -179,7 +179,7 @@ pub async fn _check_instruments_availability(
         println!("Инструмент {}: ", status.instrument_uid);
         println!(
             "  Доступен для торговли: {}",
-            response.is_instrument_available(&status.instrument_uid)
+            response._is_instrument_available(&status.instrument_uid)
         );
         println!(
             "  Доступен для API торговли: {}",
