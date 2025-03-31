@@ -1,4 +1,5 @@
 use crate::models::enums::InstrumentType;
+use crate::models::structs::Quotation;
 use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
@@ -69,12 +70,6 @@ pub enum RealExchange {
     Otc,
     #[serde(rename = "REAL_EXCHANGE_DEALER")]
     Dealer,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Quotation {
-    pub units: String,
-    pub nano: i32,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -11,7 +11,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn new(path: &str) -> Result<Self, Box<dyn Error>> {
+    pub fn new(_path: &str) -> Result<Self, Box<dyn Error>> {
         // Чтение файла конфигурации
         let config_data = fs::read_to_string("config.yaml")?;
         let config: Config = serde_yaml::from_str(&config_data)?;
