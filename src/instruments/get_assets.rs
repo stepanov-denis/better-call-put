@@ -1,7 +1,9 @@
 use crate::models::enums::InstrumentType;
 use serde::{Deserialize, Serialize};
-use std::error::Error;
 use tracing::{debug, error, info};
+use reqwest::Client;
+use std::error::Error;
+use serde_json;
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub enum InstrumentStatus {
@@ -13,10 +15,9 @@ pub enum InstrumentStatus {
     All,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum AssetType {
     #[serde(rename = "ASSET_TYPE_UNSPECIFIED")]
-    #[default]
     Unspecified,
     #[serde(rename = "ASSET_TYPE_CURRENCY")]
     Currency,
@@ -36,7 +37,21 @@ pub struct Link {
     pub instrument_uid: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
+pub struct GetAssetsResponse {
+    pub assets: Vec<Asset>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Asset {
+    pub uid: String,
+    #[serde(rename = "type")]
+    pub asset_type: String,
+    pub name: String,
+    pub instruments: Vec<Instrument>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct Instrument {
     pub uid: String,
     pub figi: String,
@@ -47,7 +62,7 @@ pub struct Instrument {
     pub class_code: String,
     pub links: Vec<Link>,
     #[serde(rename = "instrumentKind")]
-    instrument_kind: InstrumentType,
+    pub instrument_kind: String,
     #[serde(rename = "positionUid")]
     pub position_uid: String,
 }
@@ -56,21 +71,10 @@ pub trait IntoUid {
     fn into_uids(&self) -> Vec<String>;
 }
 
-impl IntoUid for Vec<Instrument> {
+impl IntoUid for Vec<String> {
     fn into_uids(&self) -> Vec<String> {
-        self.iter()
-            .map(|instrument| instrument.uid.clone())
-            .collect()
+        self.clone()
     }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Asset {
-    pub uid: String,
-    #[serde(rename = "type")]
-    pub asset_type: AssetType,
-    pub name: String,
-    pub instruments: Vec<Instrument>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -101,96 +105,55 @@ impl GetAssetsRequest {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct GetAssetsResponse {
-    pub assets: Vec<Asset>,
-}
-
 impl GetAssetsResponse {
     pub async fn get_assets(
-        client: &reqwest::Client,
+        client: &Client,
         token: &str,
         request: GetAssetsRequest,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
+    ) -> Result<Self, Box<dyn Error>> {
         let url = "https://invest-public-api.tinkoff.ru/rest/tinkoff.public.invest.api.contract.v1.InstrumentsService/GetAssets";
-
+        
         info!("Отправка запроса GetAssets: {:?}", request);
         debug!("URL запроса: {}", url);
 
-        let response = match client
+        let response = client
             .post(url)
-            .bearer_auth(token)
+            .header("Authorization", format!("Bearer {}", token))
             .json(&request)
             .send()
-            .await
-        {
-            Ok(resp) => {
-                info!("Получен ответ от сервера, статус: {}", resp.status());
-                resp
-            }
+            .await?;
+
+        info!("Получен ответ от сервера, статус: {}", response.status());
+        
+        let response_text = response.text().await?;
+        debug!("Response body: {}", response_text);
+        
+        match serde_json::from_str::<GetAssetsResponse>(&response_text) {
+            Ok(assets_response) => Ok(assets_response),
             Err(e) => {
-                error!("Ошибка отправки запроса: {}", e);
-                return Err(e.into());
-            }
-        };
-
-        let status = response.status();
-
-        // Проверяем статус ответа
-        if !status.is_success() {
-            let error_text = response.text().await.unwrap_or_else(|e| {
-                error!("Не удалось прочитать тело ошибки: {}", e);
-                "Неизвестная ошибка".to_string()
-            });
-
-            error!("Ошибка запроса: статус {}, текст: {}", status, error_text);
-            return Err(format!("Ошибка API: {} - {}", status, error_text).into());
-        }
-
-        // Пытаемся десериализовать JSON
-        match response.json::<Self>().await {
-            Ok(assets_response) => {
-                info!(
-                    "Успешно десериализован ответ с {} активами",
-                    assets_response.assets.len()
-                );
-                Ok(assets_response)
-            }
-            Err(e) => {
-                error!("Ошибка десериализации ответа: {}", e);
-                Err(e.into())
+                error!("Ошибка десериализации ответа. Детали ошибки: {}", e);
+                error!("Полученный JSON: {}", response_text);
+                Err(Box::new(e))
             }
         }
     }
 
     /// Фильтрует инструменты по заданным параметрам
     pub async fn filter_instruments(
-        self,
+        &self,
         class_code: &str,
         instrument_type: &str,
-    ) -> Result<Vec<Instrument>, Box<dyn Error>> {
-        let mut filtered_instruments = Vec::new();
+    ) -> Result<Vec<String>, Box<dyn Error>> {
+        let filtered = self.assets.iter()
+            .flat_map(|asset| asset.instruments.iter())
+            .filter(|instrument| {
+                instrument.class_code == class_code &&
+                instrument.instrument_type == instrument_type
+            })
+            .map(|instrument| instrument.uid.clone())
+            .collect();
 
-        for asset in self.assets {
-            for instrument in asset.instruments {
-                if instrument.class_code == class_code
-                    && instrument.instrument_type == instrument_type
-                {
-                    filtered_instruments.push(instrument);
-                }
-            }
-        }
-
-        info!(
-            "filtered instruments: {} with class_code: '{}' and instrument_type: '{}'",
-            filtered_instruments.len(),
-            class_code,
-            instrument_type
-        );
-
-        filtered_instruments.sort_by(|a, b| a.ticker.cmp(&b.ticker));
-
-        Ok(filtered_instruments)
+        Ok(filtered)
     }
 
     /// Выводит информацию об инструментах в виде таблицы
@@ -236,38 +199,10 @@ impl GetAssetsResponse {
     }
 
     /// Выводит отфильтрованные инструменты в виде таблицы
-    pub fn print_filtered_instruments(instruments: &Vec<Instrument>) {
-        if instruments.is_empty() {
-            info!("there are no tools to display");
-            return;
-        }
-
-        let col_widths = [
-            ("UID", 38),
-            ("TICKER", 12),
-            ("CLASS_CODE", 14),
-            ("FIGI", 14),
-            ("POSITION_UID", 38),
-            ("INSTRUMENT_TYPE", 17),
-        ];
-
-        Self::print_table_separator(&col_widths);
-        Self::print_table_header(&col_widths);
-        Self::print_table_separator(&col_widths);
-
+    pub fn print_filtered_instruments(instruments: &[String]) {
+        println!("Отфильтрованные инструменты:");
         for instrument in instruments {
-            Self::print_table_row(
-                &[
-                    &instrument.uid,
-                    &instrument.ticker,
-                    &instrument.class_code,
-                    &instrument.figi,
-                    &instrument.position_uid,
-                    &instrument.instrument_type,
-                ],
-                &col_widths,
-            );
-            Self::print_table_separator(&col_widths);
+            println!("- {}", instrument);
         }
     }
 
@@ -300,5 +235,20 @@ impl GetAssetsResponse {
             print!("{:-<width$}+", "", width = width);
         }
         println!();
+    }
+
+    pub fn get_instrument_ticker(&self, instrument_uid: &str) -> Option<String> {
+        self.assets.iter()
+            .flat_map(|asset| asset.instruments.iter())
+            .find(|instrument| instrument.uid == instrument_uid)
+            .map(|instrument| instrument.ticker.clone())
+    }
+
+    pub fn get_all_instruments(&self) -> Vec<&Instrument> {
+        let mut all_instruments = Vec::new();
+        for asset in &self.assets {
+            all_instruments.extend(asset.instruments.iter());
+        }
+        all_instruments
     }
 }

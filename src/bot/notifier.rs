@@ -28,21 +28,28 @@ impl SignalNotifier {
 
     pub async fn notify_signal(&self, instrument: &str, signal: &TradeSignal) {
         let message = match signal {
-            TradeSignal::Buy => Some(format!("🟢 СИГНАЛ НА ПОКУПКУ\nИнструмент: {}\nРекомендация: КУПИТЬ", instrument)),
-            TradeSignal::Sell => Some(format!("🔴 СИГНАЛ НА ПРОДАЖУ\nИнструмент: {}\nРекомендация: ПРОДАТЬ", instrument)),
-            TradeSignal::Hold => None,
+            TradeSignal::Buy => format!(
+                "🟢 СИГНАЛ НА ПОКУПКУ\nИнструмент: {}\nРекомендация: КУПИТЬ",
+                instrument
+            ),
+            TradeSignal::Sell => format!(
+                "🔴 СИГНАЛ НА ПРОДАЖУ\nИнструмент: {}\nРекомендация: ПРОДАТЬ",
+                instrument
+            ),
+            TradeSignal::Hold => format!(
+                "⚪️ УДЕРЖАНИЕ ПОЗИЦИИ\nИнструмент: {}\nРекомендация: ДЕРЖАТЬ",
+                instrument
+            ),
         };
 
-        if let Some(msg) = message {
-            let subs_snapshot = {
-                let subs = self.subscribers.lock().await;
-                subs.clone()
-            };
+        let subs_snapshot = {
+            let subs = self.subscribers.lock().await;
+            subs.clone()
+        };
 
-            for chat_id in subs_snapshot {
-                if let Err(err) = self.send_message(chat_id, &msg).await {
-                    error!("Ошибка отправки сигнала в чат {}: {}", chat_id, err);
-                }
+        for chat_id in subs_snapshot {
+            if let Err(err) = self.send_message(chat_id, &message).await {
+                error!("Ошибка отправки сигнала в чат {}: {}", chat_id, err);
             }
         }
     }

@@ -5,6 +5,7 @@ use tracing::info;
 
 pub struct EmaCrossStrategy {
     instrument_uid: String,
+    instrument_ticker: String,
     short_ema_length: i32,
     long_ema_length: i32,
     interval: IndicatorInterval,
@@ -14,6 +15,7 @@ pub struct EmaCrossStrategy {
 impl EmaCrossStrategy {
     pub fn new(
         instrument_uid: String,
+        instrument_ticker: String,
         short_ema_length: i32,
         long_ema_length: i32,
         interval: IndicatorInterval,
@@ -22,6 +24,7 @@ impl EmaCrossStrategy {
     ) -> Self {
         Self {
             instrument_uid,
+            instrument_ticker,
             short_ema_length,
             long_ema_length,
             interval,
@@ -200,5 +203,9 @@ impl EmaCrossStrategy {
         );
 
         GetTechAnalysisResponse::get_tech_analysis(client, token, request).await
+    }
+
+    pub fn get_ticker(&self) -> &str {
+        &self.instrument_ticker
     }
 } 

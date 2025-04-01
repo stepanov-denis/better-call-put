@@ -195,6 +195,7 @@ dependencies = [
  "chrono",
  "reqwest 0.12.15",
  "serde",
+ "serde_json",
  "serde_yaml",
  "teloxide",
  "tokio",

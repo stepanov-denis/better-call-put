@@ -7,7 +7,7 @@ use tracing::{error, info};
 use tokio::sync::oneshot;
 use tokio::select;
 use crate::quotes::get_trading_statuses::GetTradingStatusesResponse;
-use crate::bot::signal::TradeSignal;
+use crate::quotes::get_trading_statuses::_check_instruments_availability;
 
 pub struct MarketScanner {
     client: reqwest::Client,
@@ -86,11 +86,10 @@ impl MarketScanner {
             }
         };
 
+        let assets_response_clone = assets_response.clone();
+
         let filtered_instruments = match assets_response
-            .filter_instruments(
-                &self.config.filter.class_code,
-                &self.config.filter.instrument_type.as_str()
-            )
+            .filter_instruments(&self.config.filter.class_code, &self.config.filter.instrument_type.as_str())
             .await
         {
             Ok(instruments) => {
@@ -105,6 +104,9 @@ impl MarketScanner {
 
         GetAssetsResponse::print_filtered_instruments(&filtered_instruments);
 
+        _check_instruments_availability(&self.client, &self.config.t_token, filtered_instruments.clone().into_uids())
+            .await?;
+
         let trading_statuses = GetTradingStatusesResponse::get_trading_statuses(
             &self.client,
             &self.config.t_token,
@@ -117,8 +119,12 @@ impl MarketScanner {
         info!("Доступные инструменты: {:?}", available_instruments);
 
         for available_instrument in available_instruments {
+            let ticker = assets_response_clone.get_instrument_ticker(&available_instrument)
+                .unwrap_or_else(|| available_instrument.clone());
+
             let mut strategy = EmaCrossStrategy::new(
                 available_instrument.clone(),
+                ticker,
                 self.config.strategy.short_ema_length,
                 self.config.strategy.long_ema_length,
                 self.config.strategy.interval,
@@ -128,12 +134,23 @@ impl MarketScanner {
 
             match strategy.get_trade_signal(&self.client, &self.config.t_token).await {
                 Ok(signal) => {
-                    info!("Получен сигнал {:?} для инструмента {}", signal, available_instrument);
-                    let trade_signal = TradeSignal::from(signal);
-                    self.notifier.notify_signal(&available_instrument, &trade_signal).await;
+                    info!("Получен сигнал {:?} для инструмента {} ({})", 
+                        signal, 
+                        strategy.get_ticker(), 
+                        available_instrument
+                    );
+                    let trade_signal = crate::bot::signal::TradeSignal::from(signal);
+                    self.notifier.notify_signal(
+                        &format!("{} ({})", strategy.get_ticker(), available_instrument),
+                        &trade_signal
+                    ).await;
                 }
                 Err(e) => {
-                    error!("Ошибка получения сигнала для {}: {}", available_instrument, e);
+                    error!("Ошибка получения сигнала для {} ({}): {}", 
+                        strategy.get_ticker(), 
+                        available_instrument, 
+                        e
+                    );
                 }
             }
         }
