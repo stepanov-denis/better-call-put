@@ -3,7 +3,7 @@ use std::sync::Arc;
 use teloxide::prelude::*;
 use teloxide::types::ChatId;
 use tokio::sync::Mutex;
-use crate::bot::trade::TradeSignal;
+use crate::bot::signal::TradeSignal;
 use tracing::{info, error};
 
 pub type Subscribers = Arc<Mutex<HashSet<ChatId>>>;

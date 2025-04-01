@@ -7,6 +7,7 @@ use tracing::{error, info};
 use tokio::sync::oneshot;
 use tokio::select;
 use crate::quotes::get_trading_statuses::GetTradingStatusesResponse;
+use crate::bot::signal::TradeSignal;
 
 pub struct MarketScanner {
     client: reqwest::Client,
@@ -116,17 +117,20 @@ impl MarketScanner {
         info!("Доступные инструменты: {:?}", available_instruments);
 
         for available_instrument in available_instruments {
-            let strategy = EmaCrossStrategy::new(
+            let mut strategy = EmaCrossStrategy::new(
                 available_instrument.clone(),
                 self.config.strategy.short_ema_length,
                 self.config.strategy.long_ema_length,
                 self.config.strategy.interval,
+                self.config.strategy.hysteresis_percentage,
+                self.config.strategy.hysteresis_periods,
             );
 
             match strategy.get_trade_signal(&self.client, &self.config.t_token).await {
                 Ok(signal) => {
                     info!("Получен сигнал {:?} для инструмента {}", signal, available_instrument);
-                    self.notifier.notify_signal(&available_instrument, &signal).await;
+                    let trade_signal = TradeSignal::from(signal);
+                    self.notifier.notify_signal(&available_instrument, &trade_signal).await;
                 }
                 Err(e) => {
                     error!("Ошибка получения сигнала для {}: {}", available_instrument, e);

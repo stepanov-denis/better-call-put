@@ -27,6 +27,8 @@ pub struct StrategyConfig {
     pub short_ema_length: i32,
     pub long_ema_length: i32,
     pub interval: IndicatorInterval,
+    pub hysteresis_percentage: f64,
+    pub hysteresis_periods: u32,
 }
 
 #[derive(Debug, Deserialize, Clone)]

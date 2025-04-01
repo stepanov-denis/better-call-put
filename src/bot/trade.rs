@@ -1,18 +1,14 @@
+use crate::bot::signal::{CrossoverSignal, Signal, TradeSignal};
 use crate::quotes::get_tech_analysis::{GetTechAnalysisRequest, GetTechAnalysisResponse, IndicatorInterval, TypeOfPrice};
+use reqwest::Client;
+use tracing::info;
 
-#[derive(Debug, Clone)]
-pub enum TradeSignal {
-    Buy,
-    Sell,
-    Hold,
-}
-
-#[derive(Debug)]
 pub struct EmaCrossStrategy {
-    pub instrument_uid: String,
-    pub short_ema_length: i32,
-    pub long_ema_length: i32,
-    pub interval: IndicatorInterval,
+    instrument_uid: String,
+    short_ema_length: i32,
+    long_ema_length: i32,
+    interval: IndicatorInterval,
+    signal_generator: CrossoverSignal,
 }
 
 impl EmaCrossStrategy {
@@ -21,12 +17,15 @@ impl EmaCrossStrategy {
         short_ema_length: i32,
         long_ema_length: i32,
         interval: IndicatorInterval,
+        hysteresis_percentage: f64,
+        hysteresis_periods: u32,
     ) -> Self {
         Self {
             instrument_uid,
             short_ema_length,
             long_ema_length,
             interval,
+            signal_generator: CrossoverSignal::new(hysteresis_percentage, hysteresis_periods),
         }
     }
 
@@ -110,13 +109,96 @@ impl EmaCrossStrategy {
 
     /// Получает и анализирует торговый сигнал
     pub async fn get_trade_signal(
-        &self,
-        client: &reqwest::Client,
+        &mut self,
+        client: &Client,
         token: &str,
-    ) -> Result<TradeSignal, Box<dyn std::error::Error>> {
-        let short_ema = self.get_short_ema(client, token).await?;
-        let long_ema = self.get_long_ema(client, token).await?;
+    ) -> Result<Signal, Box<dyn std::error::Error>> {
+        let short_ema = self.get_ema_values(client, token, self.short_ema_length).await?;
+        let long_ema = self.get_ema_values(client, token, self.long_ema_length).await?;
 
-        Ok(self.analyze_crossover(&short_ema, &long_ema))
+        if short_ema.technical_indicators.is_empty() || long_ema.technical_indicators.is_empty() {
+            info!("Нет данных индикаторов");
+            return Ok(Signal::Hold);
+        }
+
+        // Добавляем отладочный вывод всех полей последнего индикатора
+        if let Some(last_indicator) = short_ema.technical_indicators.last() {
+            info!(
+                "Последний индикатор короткой EMA:\n\
+                 timestamp: {:?}\n\
+                 signal: {:?}",
+                last_indicator.timestamp,
+                last_indicator.signal,
+            );
+        }
+
+        let last_short = match short_ema.technical_indicators.last() {
+            Some(indicator) => {
+                match &indicator.signal {
+                    Some(value) => {
+                        let units = value.units.parse::<f64>().unwrap_or_else(|e| {
+                            info!("Ошибка парсинга units для короткой EMA: {}", e);
+                            0.0
+                        });
+                        let nanos = value.nano as f64 / 1_000_000_000.0;
+                        units + nanos
+                    }
+                    None => {
+                        info!("Отсутствует значение signal для короткой EMA");
+                        0.0
+                    }
+                }
+            }
+            None => {
+                info!("Не удалось получить последний индикатор для короткой EMA");
+                0.0
+            }
+        };
+
+        let last_long = match long_ema.technical_indicators.last() {
+            Some(indicator) => {
+                match &indicator.signal {
+                    Some(value) => {
+                        let units = value.units.parse::<f64>().unwrap_or_else(|e| {
+                            info!("Ошибка парсинга units для длинной EMA: {}", e);
+                            0.0
+                        });
+                        let nanos = value.nano as f64 / 1_000_000_000.0;
+                        units + nanos
+                    }
+                    None => {
+                        info!("Отсутствует значение signal для длинной EMA");
+                        0.0
+                    }
+                }
+            }
+            None => {
+                info!("Не удалось получить последний индикатор для длинной EMA");
+                0.0
+            }
+        };
+
+        info!(
+            "Последние значения EMA - короткая: {:.6}, длинная: {:.6}",
+            last_short, last_long
+        );
+
+        Ok(self.signal_generator.update(last_short, last_long))
+    }
+
+    async fn get_ema_values(
+        &self,
+        client: &Client,
+        token: &str,
+        length: i32,
+    ) -> Result<GetTechAnalysisResponse, Box<dyn std::error::Error>> {
+        let request = GetTechAnalysisRequest::new_ema_auto_period(
+            &self.instrument_uid,
+            self.interval,
+            TypeOfPrice::Close,
+            length,
+        );
+
+        GetTechAnalysisResponse::get_tech_analysis(client, token, request).await
     }
 } 

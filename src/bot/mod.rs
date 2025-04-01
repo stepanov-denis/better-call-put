@@ -1,5 +1,6 @@
+pub mod notifier;
 pub mod trade;
 pub mod scanner;
-pub mod notifier;
+pub mod signal;
 
 pub use scanner::MarketScanner;
