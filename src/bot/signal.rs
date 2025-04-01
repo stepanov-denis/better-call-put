@@ -8,7 +8,7 @@ pub enum Signal {
     Hold,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TradeSignal {
     Buy,
     Sell,

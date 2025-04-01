@@ -1,4 +1,5 @@
 use std::time::Duration;
+use std::collections::HashMap;
 use crate::config::Config;
 use crate::instruments::get_assets::{GetAssetsRequest, GetAssetsResponse, IntoUid};
 use crate::bot::trade::EmaCrossStrategy;
@@ -14,6 +15,7 @@ pub struct MarketScanner {
     config: Config,
     notifier: SignalNotifier,
     scan_interval: Duration,
+    strategies: HashMap<String, EmaCrossStrategy>,
 }
 
 impl MarketScanner {
@@ -28,12 +30,13 @@ impl MarketScanner {
             client, 
             config: config.clone(),
             notifier,
-            scan_interval: Duration::from_secs(config.scan_interval_seconds),  // Используем значение из конфига
+            scan_interval: Duration::from_secs(config.scan_interval_seconds),
+            strategies: HashMap::new(),
         })
     }
 
     pub async fn start_with_shutdown(
-        &self,
+        &mut self,
         mut shutdown: oneshot::Receiver<()>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.notifier.start_listener().await;
@@ -67,7 +70,7 @@ impl MarketScanner {
     }
 
     /// Сканирует рынок и возвращает торговые сигналы для доступных инструментов
-    async fn scan_market(&self) -> Result<(), Box<dyn std::error::Error>> {
+    async fn scan_market(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         info!("Начало цикла сканирования рынка");
 
         let request = GetAssetsRequest::new(
@@ -122,15 +125,17 @@ impl MarketScanner {
             let ticker = assets_response_clone.get_instrument_ticker(&available_instrument)
                 .unwrap_or_else(|| available_instrument.clone());
 
-            let mut strategy = EmaCrossStrategy::new(
-                available_instrument.clone(),
-                ticker,
-                self.config.strategy.short_ema_length,
-                self.config.strategy.long_ema_length,
-                self.config.strategy.interval,
-                self.config.strategy.hysteresis_percentage,
-                self.config.strategy.hysteresis_periods,
-            );
+            let strategy = self.strategies.entry(available_instrument.clone()).or_insert_with(|| {
+                EmaCrossStrategy::new(
+                    available_instrument.clone(),
+                    ticker.clone(),
+                    self.config.strategy.short_ema_length,
+                    self.config.strategy.long_ema_length,
+                    self.config.strategy.interval,
+                    self.config.strategy.hysteresis_percentage,
+                    self.config.strategy.hysteresis_periods,
+                )
+            });
 
             match strategy.get_trade_signal(&self.client, &self.config.t_token).await {
                 Ok(signal) => {
@@ -140,10 +145,12 @@ impl MarketScanner {
                         available_instrument
                     );
                     let trade_signal = crate::bot::signal::TradeSignal::from(signal);
-                    self.notifier.notify_signal(
-                        &format!("{} ({})", strategy.get_ticker(), available_instrument),
-                        &trade_signal
-                    ).await;
+                    if trade_signal != crate::bot::signal::TradeSignal::Hold {
+                        self.notifier.notify_signal(
+                            &format!("{} ({})", strategy.get_ticker(), available_instrument),
+                            &trade_signal
+                        ).await;
+                    }
                 }
                 Err(e) => {
                     error!("Ошибка получения сигнала для {} ({}): {}", 

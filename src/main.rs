@@ -27,7 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Запуск приложения");
 
     let config = Config::new("config.yaml")?;
-    let scanner = MarketScanner::new(config)?;
+    let mut scanner = MarketScanner::new(config)?;
     
     // Создаем канал для отправки сигнала завершения
     let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel();
