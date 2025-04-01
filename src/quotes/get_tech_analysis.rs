@@ -24,31 +24,31 @@ pub enum IndicatorType {
 pub enum IndicatorInterval {
     #[serde(rename = "INDICATOR_INTERVAL_UNSPECIFIED")]
     Unspecified,
-    #[serde(rename = "INDICATOR_INTERVAL_1_MIN")]
+    #[serde(rename = "INDICATOR_INTERVAL_ONE_MINUTE")]
     OneMinute,
     #[serde(rename = "INDICATOR_INTERVAL_2_MIN")]
     TwoMinutes,
     #[serde(rename = "INDICATOR_INTERVAL_3_MIN")]
     ThreeMinutes,
-    #[serde(rename = "INDICATOR_INTERVAL_5_MIN")]
+    #[serde(rename = "INDICATOR_INTERVAL_FIVE_MINUTES")]
     FiveMinutes,
     #[serde(rename = "INDICATOR_INTERVAL_10_MIN")]
     TenMinutes,
-    #[serde(rename = "INDICATOR_INTERVAL_15_MIN")]
+    #[serde(rename = "INDICATOR_INTERVAL_FIFTEEN_MINUTES")]
     FifteenMinutes,
     #[serde(rename = "INDICATOR_INTERVAL_30_MIN")]
     ThirtyMin,
-    #[serde(rename = "INDICATOR_INTERVAL_1_HOUR")]
+    #[serde(rename = "INDICATOR_INTERVAL_ONE_HOUR")]
     Hour,
     #[serde(rename = "INDICATOR_INTERVAL_2_HOUR")]
     TwoHours,
     #[serde(rename = "INDICATOR_INTERVAL_4_HOUR")]
     FourHour,
-    #[serde(rename = "INDICATOR_INTERVAL_1_DAY")]
+    #[serde(rename = "INDICATOR_INTERVAL_ONE_DAY")]
     Day,
-    #[serde(rename = "INDICATOR_INTERVAL_1_WEEK")]
+    #[serde(rename = "INDICATOR_INTERVAL_WEEK")]
     Week,
-    #[serde(rename = "INDICATOR_INTERVAL_1_MONTH")]
+    #[serde(rename = "INDICATOR_INTERVAL_MONTH")]
     Month,
 }
 
