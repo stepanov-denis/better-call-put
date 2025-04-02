@@ -41,23 +41,23 @@ impl MarketScanner {
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.notifier.start_listener().await;
         
-        info!("Запуск непрерывного сканирования рынка с интервалом {:?}", self.scan_interval);
+        info!("Starting continuous market scanning with interval {:?}", self.scan_interval);
         
         loop {
             select! {
-                // Проверяем сигнал завершения
+                // Check termination signal
                 _ = &mut shutdown => {
-                    info!("Получен сигнал завершения, останавливаем сканирование");
+                    info!("Received termination signal, stopping scanning");
                     break;
                 }
-                // Выполняем сканирование
+                // Perform scanning
                 _ = async {
                     match self.scan_market().await {
                         Ok(_) => {
-                            info!("Цикл сканирования завершен успешно. Пауза {:?}", self.scan_interval);
+                            info!("Scanning cycle completed successfully. Pause {:?}", self.scan_interval);
                         }
                         Err(e) => {
-                            error!("Ошибка при сканировании рынка: {}. Пауза {:?}", e, self.scan_interval);
+                            error!("Error during market scanning: {}. Pause {:?}", e, self.scan_interval);
                         }
                     }
                     tokio::time::sleep(self.scan_interval).await;
@@ -65,13 +65,13 @@ impl MarketScanner {
             }
         }
 
-        info!("Сканирование рынка остановлено");
+        info!("Market scanning stopped");
         Ok(())
     }
 
-    /// Сканирует рынок и возвращает торговые сигналы для доступных инструментов
+    /// Scans the market and returns trading signals for available instruments
     async fn scan_market(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        info!("Начало цикла сканирования рынка");
+        info!("Starting market scanning cycle");
 
         let request = GetAssetsRequest::new(
             self.config.assets.instrument_type.clone(),
@@ -80,11 +80,11 @@ impl MarketScanner {
 
         let assets_response = match GetAssetsResponse::get_assets(&self.client, &self.config.t_token, request).await {
             Ok(response) => {
-                info!("Успешно получены данные об активах");
+                info!("Successfully received asset data");
                 response
             }
             Err(e) => {
-                error!("Ошибка получения активов: {}", e);
+                error!("Error getting assets: {}", e);
                 return Err(e);
             }
         };
@@ -96,11 +96,11 @@ impl MarketScanner {
             .await
         {
             Ok(instruments) => {
-                info!("активы отфильтрованы успешно");
+                info!("Assets filtered successfully");
                 instruments
             }
             Err(e) => {
-                error!("ошибка фильтрации активов: {}", e);
+                error!("Error filtering assets: {}", e);
                 return Err(e);
             }
         };
@@ -119,7 +119,7 @@ impl MarketScanner {
 
         let available_instruments = trading_statuses.get_available_instruments();
 
-        info!("Доступные инструменты: {:?}", available_instruments);
+        info!("Available instruments: {:?}", available_instruments);
 
         for available_instrument in available_instruments {
             let ticker = assets_response_clone.get_instrument_ticker(&available_instrument)
@@ -139,7 +139,7 @@ impl MarketScanner {
 
             match strategy.get_trade_signal(&self.client, &self.config.t_token).await {
                 Ok(signal) => {
-                    info!("Получен сигнал {:?} для инструмента {} ({})", 
+                    info!("Received signal {:?} for instrument {} ({})", 
                         signal, 
                         strategy.get_ticker(), 
                         available_instrument
@@ -153,7 +153,7 @@ impl MarketScanner {
                     }
                 }
                 Err(e) => {
-                    error!("Ошибка получения сигнала для {} ({}): {}", 
+                    error!("Error getting signal for {} ({}): {}", 
                         strategy.get_ticker(), 
                         available_instrument, 
                         e

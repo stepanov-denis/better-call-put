@@ -156,7 +156,7 @@ impl InstrumentResponse {
             .send()
             .await?;
 
-        // Проверяем статус ответа
+        // Check response status
         if !response.status().is_success() {
             error!("request error: {}", response.status());
             let error_text = response.text().await?;

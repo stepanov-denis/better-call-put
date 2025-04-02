@@ -30,7 +30,7 @@ pub enum InstrumentType {
     ClearingCertificate,
 }
 
-// Реализуем Display для InstrumentType
+// Implement Display for InstrumentType
 impl fmt::Display for InstrumentType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

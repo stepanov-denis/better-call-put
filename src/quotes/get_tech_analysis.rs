@@ -91,8 +91,8 @@ pub struct GetTechAnalysisRequest {
     pub indicator_type: IndicatorType,
     #[serde(rename = "instrumentUid")]
     pub instrument_uid: String,
-    pub from: String,      // обязательное поле
-    pub to: String,        // обязательное поле
+    pub from: String,      // required field
+    pub to: String,        // required field
     pub interval: IndicatorInterval,
     #[serde(rename = "typeOfPrice")]
     pub type_of_price: TypeOfPrice,
@@ -145,7 +145,7 @@ impl GetTechAnalysisRequest {
         }
     }
 
-    /// Создает запрос для получения EMA с автоматическим расчетом временного диапазона
+    /// Creates a request for getting EMA with automatic time range calculation
     pub fn new_ema_auto_period(
         instrument_uid: &str,
         interval: IndicatorInterval,
@@ -154,18 +154,18 @@ impl GetTechAnalysisRequest {
     ) -> Self {
         let now = chrono::Utc::now();
         
-        // Для EMA нам нужно как минимум 2.5 * length точек для формирования индикатора
-        // Добавляем еще 50% для отображения трендов
+        // For EMA we need at least 2.5 * length points to form the indicator
+        // Add an additional 50% for displaying trends
         let required_points = (length as f64 * 3.75).ceil() as i32;
         
-        // Минимальное количество дней для разных интервалов с учетом required_points
+        // Minimum number of days for different intervals considering required_points
         let days = match interval {
             IndicatorInterval::OneMinute => {
-                let points_per_day = 24 * 60; // точек в день
+                let points_per_day = 24 * 60; // points in a day
                 ((required_points as f64 / points_per_day as f64).ceil() as i64).max(1)
             },
             IndicatorInterval::TwoMinutes => {
-                let points_per_day = 24 * 30; // точек в день
+                let points_per_day = 24 * 30; // points in a day
                 ((required_points as f64 / points_per_day as f64).ceil() as i64).max(1)
             },
             IndicatorInterval::ThreeMinutes => {
@@ -206,7 +206,7 @@ impl GetTechAnalysisRequest {
             IndicatorInterval::Unspecified => required_points.max(30) as i64,
         };
 
-        // Устанавливаем начало периода на начало дня
+        // Set the start of the period to the start of the day
         let from = (now - chrono::Duration::days(days))
             .date_naive()
             .and_hms_opt(0, 0, 0)
@@ -275,8 +275,8 @@ impl GetTechAnalysisResponse {
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let url = "https://invest-public-api.tinkoff.ru/rest/tinkoff.public.invest.api.contract.v1.MarketDataService/GetTechAnalysis";
 
-        info!("Отправка запроса GetTechAnalysis: {:?}", request);
-        debug!("URL запроса: {}", url);
+        info!("Sending GetTechAnalysis request: {:?}", request);
+        debug!("Request URL: {}", url);
 
         let response = match client
             .post(url)
@@ -286,11 +286,11 @@ impl GetTechAnalysisResponse {
             .await
         {
             Ok(resp) => {
-                info!("Получен ответ от сервера, статус: {}", resp.status());
+                info!("Received response from server, status: {}", resp.status());
                 resp
             }
             Err(e) => {
-                error!("Ошибка отправки запроса: {}", e);
+                error!("Error sending request: {}", e);
                 return Err(e.into());
             }
         };
@@ -299,33 +299,33 @@ impl GetTechAnalysisResponse {
 
         if !status.is_success() {
             let error_text = response.text().await.unwrap_or_else(|e| {
-                error!("Не удалось прочитать тело ошибки: {}", e);
-                "Неизвестная ошибка".to_string()
+                error!("Unable to read error body: {}", e);
+                "Unknown error".to_string()
             });
 
-            error!("Ошибка запроса: статус {}, текст: {}", status, error_text);
-            return Err(format!("Ошибка API: {} - {}", status, error_text).into());
+            error!("Request error: status {}, text: {}", status, error_text);
+            return Err(format!("API error: {} - {}", status, error_text).into());
         }
 
         match response.json::<Self>().await {
             Ok(tech_analysis_response) => {
                 info!(
-                    "Успешно получены технические индикаторы для {} временных точек",
+                    "Successfully received technical indicators for {} time points",
                     tech_analysis_response.technical_indicators.len()
                 );
                 Ok(tech_analysis_response)
             }
             Err(e) => {
-                error!("Ошибка десериализации ответа: {}", e);
+                error!("Error deserializing response: {}", e);
                 Err(e.into())
             }
         }
     }
 
-    /// Отладочный метод для просмотра всех данных индикатора
+    /// Debug method for viewing all indicator data
     pub fn _debug_print_indicator(&self) {
         for (i, indicator) in self.technical_indicators.iter().enumerate() {
-            println!("Индикатор #{}", i + 1);
+            println!("Indicator #{}", i + 1);
             println!("  Timestamp: {}", indicator.timestamp);
             println!("  Middle Band: {:?}", indicator.middle_band);
             println!("  Upper Band: {:?}", indicator.upper_band);
@@ -336,18 +336,18 @@ impl GetTechAnalysisResponse {
         }
     }
 
-    /// Выводит значения EMA для каждого временного интервала
+    /// Prints EMA values for each time interval
     pub fn _print_ema_values(&self) {
         if self.technical_indicators.is_empty() {
-            println!("Нет данных для отображения");
+            println!("No data to display");
             return;
         }
 
-        println!("Всего точек данных: {}", self.technical_indicators.len());
+        println!("Total data points: {}", self.technical_indicators.len());
         
-        // Добавляем отладочный вывод первой точки
+        // Add debug output for the first point
         if let Some(first) = self.technical_indicators.first() {
-            println!("Отладка первой точки:");
+            println!("Debug first point:");
             println!("  middle_band: {:?}", first.middle_band);
             println!("  upper_band: {:?}", first.upper_band);
             println!("  lower_band: {:?}", first.lower_band);
@@ -357,22 +357,22 @@ impl GetTechAnalysisResponse {
         }
 
         for indicator in &self.technical_indicators {
-            // Пробуем искать EMA в разных полях
+            // Try to find EMA in different fields
             let ema_value = indicator.middle_band.as_ref()
-                .or(indicator.signal.as_ref())  // пробуем signal если middle_band пусто
-                .or(indicator.macd.as_ref());   // пробуем macd если signal пусто
+                .or(indicator.signal.as_ref())  // try signal if middle_band is empty
+                .or(indicator.macd.as_ref());   // try macd if signal is empty
 
             match ema_value {
                 Some(ema) => {
                     println!(
-                        "Время: {}, EMA: {}.{:09}",
+                        "Time: {}, EMA: {}.{:09}",
                         indicator.timestamp,
                         ema.units,
                         ema.nano.abs()
                     );
                 }
                 None => {
-                    println!("Время: {}, EMA: нет данных", indicator.timestamp);
+                    println!("Time: {}, EMA: no data", indicator.timestamp);
                 }
             }
         }

@@ -5,7 +5,7 @@ use serde::Deserialize;
 use std::error::Error;
 use std::fs;
 
-// Конфигурация
+// Configuration
 #[derive(Debug, Deserialize, Clone)]
 pub struct Config {
     pub t_token: String,
@@ -39,7 +39,7 @@ pub struct FilterConfig {
 
 impl Config {
     pub fn new(_path: &str) -> Result<Self, Box<dyn Error>> {
-        // Чтение файла конфигурации
+        // Reading configuration file
         let config_data = fs::read_to_string("config.yaml")?;
         let config: Config = serde_yaml::from_str(&config_data)?;
 

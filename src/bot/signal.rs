@@ -61,7 +61,7 @@ impl CrossoverSignal {
         let ema_percentage = ema_diff / long_ema * 100.0;
         
         info!(
-            "EMA анализ: короткая={}, длинная={}, разница={}%, порог={}%",
+            "EMA analysis: short={}, long={}, difference={}%, threshold={}%",
             short_ema, long_ema, ema_percentage, self.hysteresis_percentage
         );
 
@@ -76,7 +76,7 @@ impl CrossoverSignal {
         if new_state == self.state {
             self.time_in_state += 1;
         } else {
-            info!("Смена состояния: {:?} -> {:?}", self.state, new_state);
+            info!("State change: {:?} -> {:?}", self.state, new_state);
             self.state = new_state;
             self.time_in_state = 1;
         }
@@ -84,7 +84,7 @@ impl CrossoverSignal {
         match self.state {
             State::Above => {
                 if self.time_in_state >= self.hysteresis_periods && self.last_signal != Some(Signal::Buy) {
-                    info!("Сформирован сигнал на покупку после {} периодов", self.time_in_state);
+                    info!("Buy signal generated after {} periods", self.time_in_state);
                     self.last_signal = Some(Signal::Buy);
                     Signal::Buy
                 } else {
@@ -93,7 +93,7 @@ impl CrossoverSignal {
             }
             State::Below => {
                 if self.time_in_state >= self.hysteresis_periods && self.last_signal != Some(Signal::Sell) {
-                    info!("Сформирован сигнал на продажу после {} периодов", self.time_in_state);
+                    info!("Sell signal generated after {} periods", self.time_in_state);
                     self.last_signal = Some(Signal::Sell);
                     Signal::Sell
                 } else {

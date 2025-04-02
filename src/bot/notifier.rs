@@ -29,15 +29,15 @@ impl SignalNotifier {
     pub async fn notify_signal(&self, instrument: &str, signal: &TradeSignal) {
         let message = match signal {
             TradeSignal::Buy => format!(
-                "🟢 СИГНАЛ НА ПОКУПКУ\nИнструмент: {}\nРекомендация: КУПИТЬ",
+                "🟢 BUY SIGNAL\nInstrument: {}\nRecommendation: BUY",
                 instrument
             ),
             TradeSignal::Sell => format!(
-                "🔴 СИГНАЛ НА ПРОДАЖУ\nИнструмент: {}\nРекомендация: ПРОДАТЬ",
+                "🔴 SELL SIGNAL\nInstrument: {}\nRecommendation: SELL",
                 instrument
             ),
             TradeSignal::Hold => format!(
-                "⚪️ УДЕРЖАНИЕ ПОЗИЦИИ\nИнструмент: {}\nРекомендация: ДЕРЖАТЬ",
+                "⚪️ HOLD POSITION\nInstrument: {}\nRecommendation: HOLD",
                 instrument
             ),
         };
@@ -49,7 +49,7 @@ impl SignalNotifier {
 
         for chat_id in subs_snapshot {
             if let Err(err) = self.send_message(chat_id, &message).await {
-                error!("Ошибка отправки сигнала в чат {}: {}", chat_id, err);
+                error!("Error sending signal to chat {}: {}", chat_id, err);
             }
         }
     }
@@ -67,13 +67,13 @@ impl SignalNotifier {
                             {
                                 let mut subs = subscribers.lock().await;
                                 subs.insert(message.chat.id);
-                                info!("Новый подписчик: {}", message.chat.id);
+                                info!("New subscriber: {}", message.chat.id);
                             }
                             if let Err(err) = bot.send_message(
                                 message.chat.id,
-                                "✅ Вы подписались на получение торговых сигналов!"
+                                "✅ You have subscribed to trading signals!"
                             ).await {
-                                error!("Ошибка отправки приветствия: {}", err);
+                                error!("Error sending welcome message: {}", err);
                             }
                         }
                     }

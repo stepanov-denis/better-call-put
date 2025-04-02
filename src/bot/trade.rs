@@ -32,7 +32,7 @@ impl EmaCrossStrategy {
         }
     }
 
-    /// Получает значения короткой EMA
+    /// Gets short EMA values
     pub async fn get_short_ema(
         &self,
         client: &reqwest::Client,
@@ -48,7 +48,7 @@ impl EmaCrossStrategy {
         GetTechAnalysisResponse::get_tech_analysis(client, token, request).await
     }
 
-    /// Получает значения длинной EMA
+    /// Gets long EMA values
     pub async fn get_long_ema(
         &self,
         client: &reqwest::Client,
@@ -64,13 +64,13 @@ impl EmaCrossStrategy {
         GetTechAnalysisResponse::get_tech_analysis(client, token, request).await
     }
 
-    /// Анализирует пересечение EMA и возвращает торговый сигнал
+    /// Analyzes EMA crossover and returns trading signal
     pub fn analyze_crossover(
         &self,
         short_ema: &GetTechAnalysisResponse,
         long_ema: &GetTechAnalysisResponse,
     ) -> TradeSignal {
-        // Получаем последние две точки для каждой EMA
+        // Get last two points for each EMA
         let short_values: Vec<_> = short_ema.technical_indicators
             .iter()
             .filter_map(|i| i.middle_band.as_ref())
@@ -89,7 +89,7 @@ impl EmaCrossStrategy {
             return TradeSignal::Hold;
         }
 
-        // Конвертируем значения в числа для сравнения
+        // Convert values to numbers for comparison
         let short_current = short_values[0].units.parse::<f64>().unwrap_or(0.0) 
             + (short_values[0].nano as f64 / 1_000_000_000.0);
         let short_previous = short_values[1].units.parse::<f64>().unwrap_or(0.0)
@@ -100,7 +100,7 @@ impl EmaCrossStrategy {
         let long_previous = long_values[1].units.parse::<f64>().unwrap_or(0.0)
             + (long_values[1].nano as f64 / 1_000_000_000.0);
 
-        // Проверяем пересечение
+        // Check for crossover
         if short_current > long_current && short_previous <= long_previous {
             TradeSignal::Buy
         } else if short_current < long_current && short_previous >= long_previous {
@@ -110,7 +110,7 @@ impl EmaCrossStrategy {
         }
     }
 
-    /// Получает и анализирует торговый сигнал
+    /// Gets and analyzes trading signal
     pub async fn get_trade_signal(
         &mut self,
         client: &Client,
@@ -120,14 +120,14 @@ impl EmaCrossStrategy {
         let long_ema = self.get_ema_values(client, token, self.long_ema_length).await?;
 
         if short_ema.technical_indicators.is_empty() || long_ema.technical_indicators.is_empty() {
-            info!("Нет данных индикаторов");
+            info!("No data found for indicators");
             return Ok(Signal::Hold);
         }
 
-        // Добавляем отладочный вывод всех полей последнего индикатора
+        // Add debug output for all fields of the last indicator
         if let Some(last_indicator) = short_ema.technical_indicators.last() {
             info!(
-                "Последний индикатор короткой EMA:\n\
+                "Last indicator for short EMA:\n\
                  timestamp: {:?}\n\
                  signal: {:?}",
                 last_indicator.timestamp,
@@ -140,20 +140,20 @@ impl EmaCrossStrategy {
                 match &indicator.signal {
                     Some(value) => {
                         let units = value.units.parse::<f64>().unwrap_or_else(|e| {
-                            info!("Ошибка парсинга units для короткой EMA: {}", e);
+                            info!("Error parsing units for short EMA: {}", e);
                             0.0
                         });
                         let nanos = value.nano as f64 / 1_000_000_000.0;
                         units + nanos
                     }
                     None => {
-                        info!("Отсутствует значение signal для короткой EMA");
+                        info!("Missing signal value for short EMA");
                         0.0
                     }
                 }
             }
             None => {
-                info!("Не удалось получить последний индикатор для короткой EMA");
+                info!("Failed to get last indicator for short EMA");
                 0.0
             }
         };
@@ -163,26 +163,26 @@ impl EmaCrossStrategy {
                 match &indicator.signal {
                     Some(value) => {
                         let units = value.units.parse::<f64>().unwrap_or_else(|e| {
-                            info!("Ошибка парсинга units для длинной EMA: {}", e);
+                            info!("Error parsing units for long EMA: {}", e);
                             0.0
                         });
                         let nanos = value.nano as f64 / 1_000_000_000.0;
                         units + nanos
                     }
                     None => {
-                        info!("Отсутствует значение signal для длинной EMA");
+                        info!("Missing signal value for long EMA");
                         0.0
                     }
                 }
             }
             None => {
-                info!("Не удалось получить последний индикатор для длинной EMA");
+                info!("Failed to get last indicator for long EMA");
                 0.0
             }
         };
 
         info!(
-            "Последние значения EMA - короткая: {:.6}, длинная: {:.6}",
+            "Last EMA values - short: {:.6}, long: {:.6}",
             last_short, last_long
         );
 

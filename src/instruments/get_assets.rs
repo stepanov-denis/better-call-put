@@ -85,7 +85,7 @@ pub struct GetAssetsRequest {
     pub instrument_status: InstrumentStatus,
 }
 
-// Добавим реализацию Display для лучшего логирования
+// Add Display implementation for better logging
 impl std::fmt::Display for GetAssetsRequest {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -113,8 +113,8 @@ impl GetAssetsResponse {
     ) -> Result<Self, Box<dyn Error>> {
         let url = "https://invest-public-api.tinkoff.ru/rest/tinkoff.public.invest.api.contract.v1.InstrumentsService/GetAssets";
         
-        info!("Отправка запроса GetAssets: {:?}", request);
-        debug!("URL запроса: {}", url);
+        info!("Sending GetAssets request: {:?}", request);
+        debug!("Request URL: {}", url);
 
         let response = client
             .post(url)
@@ -123,7 +123,7 @@ impl GetAssetsResponse {
             .send()
             .await?;
 
-        info!("Получен ответ от сервера, статус: {}", response.status());
+        info!("Received response from server, status: {}", response.status());
         
         let response_text = response.text().await?;
         debug!("Response body: {}", response_text);
@@ -131,14 +131,14 @@ impl GetAssetsResponse {
         match serde_json::from_str::<GetAssetsResponse>(&response_text) {
             Ok(assets_response) => Ok(assets_response),
             Err(e) => {
-                error!("Ошибка десериализации ответа. Детали ошибки: {}", e);
-                error!("Полученный JSON: {}", response_text);
+                error!("Error deserializing response. Error details: {}", e);
+                error!("Received JSON: {}", response_text);
                 Err(Box::new(e))
             }
         }
     }
 
-    /// Фильтрует инструменты по заданным параметрам
+    /// Filters instruments by given parameters
     pub async fn filter_instruments(
         &self,
         class_code: &str,
@@ -156,7 +156,7 @@ impl GetAssetsResponse {
         Ok(filtered)
     }
 
-    /// Выводит информацию об инструментах в виде таблицы
+    /// Prints instrument information in table format
     pub fn _print_instruments(&self) {
         let mut all_instruments = Vec::new();
         for asset in &self.assets {
@@ -168,14 +168,14 @@ impl GetAssetsResponse {
             return;
         }
 
-        // Определяем ширину для каждой колонки (включая пробелы с обеих сторон)
+        // Define width for each column (including spaces on both sides)
         let col_widths = [
-            ("UID", 38),             // 36 + 2 пробела
-            ("TICKER", 12),          // максимальная длина тикера + 2
-            ("CLASS_CODE", 14),      // длина + 2
-            ("FIGI", 14),            // длина + 2
-            ("POSITION_UID", 38),    // 36 + 2 пробела
-            ("INSTRUMENT_TYPE", 17), // длина + 2
+            ("UID", 38),             // 36 + 2 spaces
+            ("TICKER", 12),          // maximum ticker length + 2
+            ("CLASS_CODE", 14),      // length + 2
+            ("FIGI", 14),            // length + 2
+            ("POSITION_UID", 38),    // 36 + 2 spaces
+            ("INSTRUMENT_TYPE", 17), // length + 2
         ];
 
         Self::print_table_separator(&col_widths);
@@ -198,9 +198,9 @@ impl GetAssetsResponse {
         }
     }
 
-    /// Выводит отфильтрованные инструменты в виде таблицы
+    /// Prints filtered instruments in table format
     pub fn print_filtered_instruments(instruments: &[String]) {
-        println!("Отфильтрованные инструменты:");
+        println!("Filtered instruments:");
         for instrument in instruments {
             println!("- {}", instrument);
         }
@@ -209,12 +209,12 @@ impl GetAssetsResponse {
     fn print_table_row(data: &[&str], cols: &[(&str, usize)]) {
         print!("|");
         for (value, (_, width)) in data.iter().zip(cols.iter()) {
-            let space_width = width - 2; // Учитываем отступы с обеих сторон
+            let space_width = width - 2; // Account for padding on both sides
             if value.len() > space_width {
-                // Обрезаем строку и добавляем ...
+                // Truncate string and add ...
                 print!(" {:.width$}... |", value, width = space_width - 3);
             } else {
-                // Выводим значение с выравниванием по левому краю
+                // Print value with left alignment
                 print!(" {:<width$} |", value, width = space_width);
             }
         }

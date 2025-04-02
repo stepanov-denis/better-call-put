@@ -12,7 +12,7 @@ mod quotes;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Инициализация логирования с расширенной конфигурацией
+    // Initialize logging with extended configuration
     tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::try_from_default_env()
@@ -24,27 +24,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_thread_names(true)
         .init();
 
-    info!("Запуск приложения");
+    info!("Starting application");
 
     let config = Config::new("config.yaml")?;
     let mut scanner = MarketScanner::new(config)?;
     
-    // Создаем канал для отправки сигнала завершения
+    // Create channel for sending termination signal
     let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel();
     
-    // Запускаем обработчик Ctrl+C в отдельной задаче
+    // Run Ctrl+C handler in a separate task
     tokio::spawn(async move {
         if let Err(e) = signal::ctrl_c().await {
-            error!("Ошибка при обработке Ctrl+C: {}", e);
+            error!("Error handling Ctrl+C: {}", e);
             return;
         }
-        info!("Получен сигнал завершения Ctrl+C");
+        info!("Received Ctrl+C termination signal");
         let _ = shutdown_tx.send(());
     });
 
-    // Запускаем сканер с поддержкой graceful shutdown
+    // Run scanner with graceful shutdown support
     scanner.start_with_shutdown(shutdown_rx).await?;
 
-    info!("Программа успешно завершена");
+    info!("Program completed successfully");
     Ok(())
 }

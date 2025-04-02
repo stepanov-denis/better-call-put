@@ -83,8 +83,8 @@ impl GetTradingStatusesResponse {
             instrument_id: instrument_ids,
         };
 
-        info!("Отправка запроса GetTradingStatuses: {:?}", request);
-        debug!("URL запроса: {}", url);
+        info!("Sending GetTradingStatuses request: {:?}", request);
+        debug!("Request URL: {}", url);
 
         let response = match client
             .post(url)
@@ -94,11 +94,11 @@ impl GetTradingStatusesResponse {
             .await
         {
             Ok(resp) => {
-                info!("Получен ответ от сервера, статус: {}", resp.status());
+                info!("Received response from server, status: {}", resp.status());
                 resp
             }
             Err(e) => {
-                error!("Ошибка отправки запроса: {}", e);
+                error!("Error sending request: {}", e);
                 return Err(e.into());
             }
         };
@@ -107,34 +107,34 @@ impl GetTradingStatusesResponse {
 
         if !status.is_success() {
             let error_text = response.text().await.unwrap_or_else(|e| {
-                error!("Не удалось прочитать тело ошибки: {}", e);
-                "Неизвестная ошибка".to_string()
+                error!("Unable to read error body: {}", e);
+                "Unknown error".to_string()
             });
 
-            error!("Ошибка запроса: статус {}, текст: {}", status, error_text);
-            return Err(format!("Ошибка API: {} - {}", status, error_text).into());
+            error!("Error sending request: {}", e);
+            return Err(format!("Error API: {} - {}", status, error_text).into());
         }
 
         match response.json::<Self>().await {
             Ok(statuses_response) => {
                 info!(
-                    "Успешно получены статусы для {} инструментов",
+                    "Successfully received statuses for {} instruments",
                     statuses_response.trading_statuses.len()
                 );
                 Ok(statuses_response)
             }
             Err(e) => {
-                error!("Ошибка десериализации ответа: {}", e);
+                error!("Error deserializing response: {}", e);
                 Err(e.into())
             }
         }
     }
 
-    /// Проверяет доступность инструмента для торговли
-    /// Возвращает true если:
-    /// 1. Инструмент найден
-    /// 2. API торговля доступна (api_trade_available_flag)
-    /// 3. Торговый статус NORMAL_TRADING
+    /// Checks if the instrument is available for trading
+    /// Returns true if:
+    /// 1. Instrument found
+    /// 2. API trading available (api_trade_available_flag)
+    /// 3. Trading status NORMAL_TRADING
     pub fn _is_instrument_available(&self, instrument_uid: &str) -> bool {
         self.trading_statuses
             .iter()
@@ -146,14 +146,14 @@ impl GetTradingStatusesResponse {
             .unwrap_or(false)
     }
 
-    /// Получает полную информацию о статусе инструмента
+    /// Gets full information about the instrument status
     pub fn _get_instrument_status(&self, instrument_uid: &str) -> Option<&TradingStatusResponse> {
         self.trading_statuses
             .iter()
             .find(|status| status.instrument_uid == instrument_uid)
     }
 
-    /// Возвращает список UID инструментов, которые доступны для торговли
+    /// Returns list of instrument UIDs that are available for trading
     pub fn get_available_instruments(&self) -> Vec<String> {
         self.trading_statuses
             .iter()
@@ -166,7 +166,7 @@ impl GetTradingStatusesResponse {
     }
 }
 
-// Пример использования:
+// Example usage:
 pub async fn _check_instruments_availability(
     client: &reqwest::Client,
     token: &str,
@@ -176,24 +176,24 @@ pub async fn _check_instruments_availability(
         GetTradingStatusesResponse::get_trading_statuses(client, token, instrument_ids).await?;
 
     for status in &response.trading_statuses {
-        println!("Инструмент {}: ", status.instrument_uid);
+        println!("Instrument {}: ", status.instrument_uid);
         println!(
-            "  Доступен для торговли: {}",
+            "  Available for trading: {}",
             response._is_instrument_available(&status.instrument_uid)
         );
         println!(
-            "  Доступен для API торговли: {}",
+            "  API trading available: {}",
             status.api_trade_available_flag
         );
         println!(
-            "  Доступны лимитные заявки: {}",
+            "  Limit orders available: {}",
             status.limit_order_available_flag
         );
         println!(
-            "  Доступны рыночные заявки: {}",
+            "  Market orders available: {}",
             status.market_order_available_flag
         );
-        println!("  Торговый статус: {:?}", status.trading_status);
+        println!("  Trading status: {:?}", status.trading_status);
         println!();
     }
 
