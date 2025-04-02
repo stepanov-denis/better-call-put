@@ -111,7 +111,7 @@ impl GetTradingStatusesResponse {
                 "Unknown error".to_string()
             });
 
-            error!("Error sending request: {}", e);
+            error!("Request failed with status: {}", status);
             return Err(format!("Error API: {} - {}", status, error_text).into());
         }
 

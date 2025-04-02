@@ -118,8 +118,7 @@ impl MarketScanner {
         .await?;
 
         let available_instruments = trading_statuses.get_available_instruments();
-
-        info!("Available instruments: {:?}", available_instruments);
+        info!("Found {} available instruments for trading", available_instruments.len());
 
         for available_instrument in available_instruments {
             let ticker = assets_response_clone.get_instrument_ticker(&available_instrument)
