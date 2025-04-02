@@ -2,12 +2,14 @@ t_token: "your-token-here"
 telegram_token: "your-telegram-token-here"
 scan_interval_seconds: 300
 filter:
-  class_code: "TQBR"
-  instrument_type: "INSTRUMENT_TYPE_SHARE"
+  class_code: TQBR
+  instrument_type: INSTRUMENT_TYPE_SHARE
 strategy:
   short_ema_length: 8
   long_ema_length: 21
-  interval: "INDICATOR_INTERVAL_4_HOUR"
+  interval: INDICATOR_INTERVAL_4_HOUR
+  hysteresis_percentage: 0.1
+  hysteresis_periods: 1
 assets:
-  instrument_type: "INSTRUMENT_TYPE_SHARE"
-  instrument_status: "INSTRUMENT_STATUS_BASE" 
+  instrument_type: INSTRUMENT_TYPE_SHARE
+  instrument_status: INSTRUMENT_STATUS_BASE
