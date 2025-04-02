@@ -17,11 +17,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: ${CPU_LIMIT:-'4'}
-          memory: ${MEMORY_LIMIT:-4G}
+          cpus: ${CPU_LIMIT:-'2'}
+          memory: ${MEMORY_LIMIT:-2G}
         reservations:
-          cpus: ${CPU_RESERVATION:-'2'}
-          memory: ${MEMORY_RESERVATION:-2G}
+          cpus: ${CPU_RESERVATION:-'1'}
+          memory: ${MEMORY_RESERVATION:-1G}
       restart_policy:
         condition: on-failure
         max_attempts: 3
