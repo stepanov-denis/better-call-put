@@ -144,12 +144,12 @@ impl MarketScanner {
                         available_instrument
                     );
                     let trade_signal = crate::bot::signal::TradeSignal::from(signal);
-                    if trade_signal != crate::bot::signal::TradeSignal::Hold {
-                        self.notifier.notify_signal(
-                            &format!("{} ({})", strategy.get_ticker(), available_instrument),
-                            &trade_signal
-                        ).await;
-                    }
+                    self.notifier.notify_signal(
+                        &format!("{} ({})", strategy.get_ticker(), available_instrument),
+                        &trade_signal,
+                        strategy.get_last_short(),
+                        strategy.get_last_long()
+                    ).await;
                 }
                 Err(e) => {
                     error!("Error getting signal for {} ({}): {}", 

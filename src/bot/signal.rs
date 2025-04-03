@@ -39,6 +39,8 @@ pub struct CrossoverSignal {
     state: State,
     time_in_state: u32,
     last_signal: Option<Signal>,
+    last_short_ema: Option<f64>,
+    last_long_ema: Option<f64>,
 }
 
 impl CrossoverSignal {
@@ -49,6 +51,8 @@ impl CrossoverSignal {
             state: State::Between,
             time_in_state: 0,
             last_signal: None,
+            last_short_ema: None,
+            last_long_ema: None,
         }
     }
 
@@ -65,42 +69,52 @@ impl CrossoverSignal {
             short_ema, long_ema, ema_percentage, self.hysteresis_percentage
         );
 
-        let new_state = if ema_percentage > self.hysteresis_percentage {
-            State::Above
-        } else if ema_percentage < -self.hysteresis_percentage {
-            State::Below
-        } else {
-            State::Between
-        };
-
-        if new_state == self.state {
-            self.time_in_state += 1;
-        } else {
-            info!("State change: {:?} -> {:?}", self.state, new_state);
-            self.state = new_state;
-            self.time_in_state = 1;
-        }
-
-        match self.state {
-            State::Above => {
-                if self.time_in_state >= self.hysteresis_periods && self.last_signal != Some(Signal::Buy) {
-                    info!("Buy signal generated after {} periods", self.time_in_state);
-                    self.last_signal = Some(Signal::Buy);
-                    Signal::Buy
+        // Check for golden cross (buy signal)
+        if let (Some(last_short), Some(last_long)) = (self.last_short_ema, self.last_long_ema) {
+            if short_ema > long_ema && last_short <= last_long {
+                // Golden cross detected
+                if ema_percentage > self.hysteresis_percentage {
+                    if self.time_in_state >= self.hysteresis_periods && self.last_signal != Some(Signal::Buy) {
+                        info!("Buy signal generated after golden cross and hysteresis period");
+                        self.last_signal = Some(Signal::Buy);
+                        self.state = State::Above;
+                        self.time_in_state = 0;
+                        self.last_short_ema = Some(short_ema);
+                        self.last_long_ema = Some(long_ema);
+                        return Signal::Buy;
+                    }
+                    self.time_in_state += 1;
                 } else {
-                    Signal::Hold
+                    self.time_in_state = 0;
                 }
             }
-            State::Below => {
-                if self.time_in_state >= self.hysteresis_periods && self.last_signal != Some(Signal::Sell) {
-                    info!("Sell signal generated after {} periods", self.time_in_state);
-                    self.last_signal = Some(Signal::Sell);
-                    Signal::Sell
+        }
+
+        // Check for death cross (sell signal)
+        if let (Some(last_short), Some(last_long)) = (self.last_short_ema, self.last_long_ema) {
+            if short_ema < long_ema && last_short >= last_long {
+                // Death cross detected
+                if ema_percentage < -self.hysteresis_percentage {
+                    if self.time_in_state >= self.hysteresis_periods && self.last_signal != Some(Signal::Sell) {
+                        info!("Sell signal generated after death cross and hysteresis period");
+                        self.last_signal = Some(Signal::Sell);
+                        self.state = State::Below;
+                        self.time_in_state = 0;
+                        self.last_short_ema = Some(short_ema);
+                        self.last_long_ema = Some(long_ema);
+                        return Signal::Sell;
+                    }
+                    self.time_in_state += 1;
                 } else {
-                    Signal::Hold
+                    self.time_in_state = 0;
                 }
             }
-            State::Between => Signal::Hold,
         }
+
+        // Update last values
+        self.last_short_ema = Some(short_ema);
+        self.last_long_ema = Some(long_ema);
+
+        Signal::Hold
     }
 } 

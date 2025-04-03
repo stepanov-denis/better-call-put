@@ -26,20 +26,40 @@ impl SignalNotifier {
         Ok(())
     }
 
-    pub async fn notify_signal(&self, instrument: &str, signal: &TradeSignal) {
+    pub async fn notify_signal(&self, instrument: &str, signal: &TradeSignal, short_ema: f64, long_ema: f64) {
+        let ema_diff = short_ema - long_ema;
+        let ema_percentage = ema_diff / long_ema * 100.0;
+
         let message = match signal {
             TradeSignal::Buy => format!(
-                "🟢 BUY SIGNAL\nInstrument: {}\nRecommendation: BUY",
-                instrument
+                "🟢 BUY SIGNAL\n\
+                Instrument: {}\n\
+                Recommendation: BUY\n\
+                Short EMA: {:.6}\n\
+                Long EMA: {:.6}\n\
+                Difference: {:.6}%",
+                instrument, short_ema, long_ema, ema_percentage
             ),
             TradeSignal::Sell => format!(
-                "🔴 SELL SIGNAL\nInstrument: {}\nRecommendation: SELL",
-                instrument
+                "🔴 SELL SIGNAL\n\
+                Instrument: {}\n\
+                Recommendation: SELL\n\
+                Short EMA: {:.6}\n\
+                Long EMA: {:.6}\n\
+                Difference: {:.6}%",
+                instrument, short_ema, long_ema, ema_percentage
             ),
-            TradeSignal::Hold => format!(
-                "⚪️ HOLD POSITION\nInstrument: {}\nRecommendation: HOLD",
-                instrument
-            ),
+            TradeSignal::Hold => {
+                info!(
+                    "HOLD POSITION\n\
+                    Instrument: {}\n\
+                    Short EMA: {:.6}\n\
+                    Long EMA: {:.6}\n\
+                    Difference: {:.6}%",
+                    instrument, short_ema, long_ema, ema_percentage
+                );
+                return; // Don't send Hold messages to Telegram
+            }
         };
 
         let subs_snapshot = {

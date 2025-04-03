@@ -10,6 +10,8 @@ pub struct EmaCrossStrategy {
     long_ema_length: i32,
     interval: IndicatorInterval,
     signal_generator: CrossoverSignal,
+    last_short_ema: f64,
+    last_long_ema: f64,
 }
 
 impl EmaCrossStrategy {
@@ -29,6 +31,8 @@ impl EmaCrossStrategy {
             long_ema_length,
             interval,
             signal_generator: CrossoverSignal::new(hysteresis_percentage, hysteresis_periods),
+            last_short_ema: 0.0,
+            last_long_ema: 0.0,
         }
     }
 
@@ -110,6 +114,14 @@ impl EmaCrossStrategy {
         }
     }
 
+    pub fn get_last_short(&self) -> f64 {
+        self.last_short_ema
+    }
+
+    pub fn get_last_long(&self) -> f64 {
+        self.last_long_ema
+    }
+
     /// Gets and analyzes trading signal
     pub async fn get_trade_signal(
         &mut self,
@@ -135,7 +147,7 @@ impl EmaCrossStrategy {
             );
         }
 
-        let last_short = match short_ema.technical_indicators.last() {
+        self.last_short_ema = match short_ema.technical_indicators.last() {
             Some(indicator) => {
                 match &indicator.signal {
                     Some(value) => {
@@ -158,7 +170,7 @@ impl EmaCrossStrategy {
             }
         };
 
-        let last_long = match long_ema.technical_indicators.last() {
+        self.last_long_ema = match long_ema.technical_indicators.last() {
             Some(indicator) => {
                 match &indicator.signal {
                     Some(value) => {
@@ -183,10 +195,10 @@ impl EmaCrossStrategy {
 
         info!(
             "Last EMA values - short: {:.6}, long: {:.6}",
-            last_short, last_long
+            self.last_short_ema, self.last_long_ema
         );
 
-        Ok(self.signal_generator.update(last_short, last_long))
+        Ok(self.signal_generator.update(self.last_short_ema, self.last_long_ema))
     }
 
     async fn get_ema_values(
