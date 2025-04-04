@@ -1,5 +1,5 @@
 use crate::models::enums::InstrumentType;
-use crate::quotes::get_tech_analysis::IndicatorInterval;
+use crate::market_data_service::get_tech_analysis::IndicatorInterval;
 use crate::instruments::get_assets::InstrumentStatus;
 use serde::Deserialize;
 use std::error::Error;

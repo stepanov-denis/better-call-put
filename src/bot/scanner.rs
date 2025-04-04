@@ -7,8 +7,8 @@ use crate::bot::notifier::SignalNotifier;
 use tracing::{error, info};
 use tokio::sync::oneshot;
 use tokio::select;
-use crate::quotes::get_trading_statuses::GetTradingStatusesResponse;
-use crate::quotes::get_trading_statuses::_check_instruments_availability;
+use crate::market_data_service::get_trading_statuses::GetTradingStatusesResponse;
+use crate::market_data_service::get_trading_statuses::_check_instruments_availability;
 
 pub struct MarketScanner {
     client: reqwest::Client,

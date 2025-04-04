@@ -8,7 +8,7 @@ mod bot;
 mod config;
 mod instruments;
 mod models;
-mod quotes;
+mod market_data_service;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

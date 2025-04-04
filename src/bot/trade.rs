@@ -1,5 +1,5 @@
 use crate::bot::signal::{CrossoverSignal, Signal, TradeSignal};
-use crate::quotes::get_tech_analysis::{GetTechAnalysisRequest, GetTechAnalysisResponse, IndicatorInterval, TypeOfPrice};
+use crate::market_data_service::get_tech_analysis::{GetTechAnalysisRequest, GetTechAnalysisResponse, IndicatorInterval, TypeOfPrice};
 use reqwest::Client;
 use tracing::info;
 
