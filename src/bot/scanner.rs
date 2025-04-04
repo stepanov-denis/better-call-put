@@ -148,7 +148,8 @@ impl MarketScanner {
                         &format!("{} ({})", strategy.get_ticker(), available_instrument),
                         &trade_signal,
                         strategy.get_last_short(),
-                        strategy.get_last_long()
+                        strategy.get_last_long(),
+                        strategy.get_last_price()
                     ).await;
                 }
                 Err(e) => {

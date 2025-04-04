@@ -1,5 +1,6 @@
 use crate::bot::signal::{CrossoverSignal, Signal, TradeSignal};
 use crate::market_data_service::get_tech_analysis::{GetTechAnalysisRequest, GetTechAnalysisResponse, IndicatorInterval, TypeOfPrice};
+use crate::market_data_service::get_last_prices::{GetLastPricesRequest, GetLastPricesResponse, LastPriceType, InstrumentStatus};
 use reqwest::Client;
 use tracing::info;
 
@@ -12,6 +13,7 @@ pub struct EmaCrossStrategy {
     signal_generator: CrossoverSignal,
     last_short_ema: f64,
     last_long_ema: f64,
+    last_price: f64,
 }
 
 impl EmaCrossStrategy {
@@ -33,6 +35,7 @@ impl EmaCrossStrategy {
             signal_generator: CrossoverSignal::new(hysteresis_percentage, hysteresis_periods),
             last_short_ema: 0.0,
             last_long_ema: 0.0,
+            last_price: 0.0,
         }
     }
 
@@ -122,12 +125,30 @@ impl EmaCrossStrategy {
         self.last_long_ema
     }
 
+    pub fn get_last_price(&self) -> f64 {
+        self.last_price
+    }
+
     /// Gets and analyzes trading signal
     pub async fn get_trade_signal(
         &mut self,
         client: &Client,
         token: &str,
     ) -> Result<Signal, Box<dyn std::error::Error>> {
+        // Get last price
+        let last_prices_request = GetLastPricesRequest::new(
+            vec![self.instrument_uid.clone()],
+            LastPriceType::Unspecified,
+            InstrumentStatus::Base,
+        );
+
+        let last_prices = GetLastPricesResponse::get_last_prices(client, token, last_prices_request).await?;
+        
+        if let Some(last_price) = last_prices.last_prices.first() {
+            self.last_price = last_price.price.units.parse::<f64>().unwrap_or(0.0) 
+                + (last_price.price.nano as f64 / 1_000_000_000.0);
+        }
+
         let short_ema = self.get_ema_values(client, token, self.short_ema_length).await?;
         let long_ema = self.get_ema_values(client, token, self.long_ema_length).await?;
 
