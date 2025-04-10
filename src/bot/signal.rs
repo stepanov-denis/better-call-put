@@ -71,58 +71,52 @@ impl CrossoverSignal {
             short_ema, long_ema, ema_percentage, self.hysteresis_percentage
         );
 
-        // Check for golden cross (buy signal)
+        // First check for crossover
         if let (Some(last_short), Some(last_long)) = (self.last_short_ema, self.last_long_ema) {
+            // Check for golden cross (buy signal)
             if short_ema > long_ema && last_short <= last_long {
-                // Golden cross detected
                 info!("Golden cross detected");
                 self.has_crossed = true;
                 self.state = State::Above;
-                self.time_in_state = 0;  // Reset counter at crossing
+                self.time_in_state = 0;
             }
-        }
-
-        // Check for death cross (sell signal)
-        if let (Some(last_short), Some(last_long)) = (self.last_short_ema, self.last_long_ema) {
-            if short_ema < long_ema && last_short >= last_long {
-                // Death cross detected
+            // Check for death cross (sell signal)
+            else if short_ema < long_ema && last_short >= last_long {
                 info!("Death cross detected");
                 self.has_crossed = true;
                 self.state = State::Below;
-                self.time_in_state = 0;  // Reset counter at crossing
+                self.time_in_state = 0;
             }
         }
 
-        // If we have crossed, increment the counter
+        // If we have crossed, increment the counter and check for hysteresis threshold
         if self.has_crossed {
             self.time_in_state += 1;
-        }
-
-        // Check for buy signal (short EMA above long EMA)
-        if ema_percentage > self.hysteresis_percentage && self.has_crossed && self.state == State::Above {
-            if self.time_in_state >= self.hysteresis_periods && self.last_signal != Some(Signal::Buy) {
-                info!("Buy signal generated after crossing and exceeding hysteresis threshold");
-                self.last_signal = Some(Signal::Buy);
-                self.time_in_state = 0;
-                self.has_crossed = false;
-                self.last_short_ema = Some(short_ema);
-                self.last_long_ema = Some(long_ema);
-                return Signal::Buy;
+            
+            // Check for buy signal (short EMA above long EMA)
+            if self.state == State::Above && ema_percentage > self.hysteresis_percentage {
+                if self.time_in_state >= self.hysteresis_periods && self.last_signal != Some(Signal::Buy) {
+                    info!("Buy signal generated after crossing and exceeding hysteresis threshold");
+                    self.last_signal = Some(Signal::Buy);
+                    self.time_in_state = 0;
+                    self.has_crossed = false;
+                    self.last_short_ema = Some(short_ema);
+                    self.last_long_ema = Some(long_ema);
+                    return Signal::Buy;
+                }
             }
-        }
-        // Check for sell signal (short EMA below long EMA)
-        else if ema_percentage < -self.hysteresis_percentage && self.has_crossed && self.state == State::Below {
-            if self.time_in_state >= self.hysteresis_periods && self.last_signal != Some(Signal::Sell) {
-                info!("Sell signal generated after crossing and exceeding hysteresis threshold");
-                self.last_signal = Some(Signal::Sell);
-                self.time_in_state = 0;
-                self.has_crossed = false;
-                self.last_short_ema = Some(short_ema);
-                self.last_long_ema = Some(long_ema);
-                return Signal::Sell;
+            // Check for sell signal (short EMA below long EMA)
+            else if self.state == State::Below && ema_percentage < -self.hysteresis_percentage {
+                if self.time_in_state >= self.hysteresis_periods && self.last_signal != Some(Signal::Sell) {
+                    info!("Sell signal generated after crossing and exceeding hysteresis threshold");
+                    self.last_signal = Some(Signal::Sell);
+                    self.time_in_state = 0;
+                    self.has_crossed = false;
+                    self.last_short_ema = Some(short_ema);
+                    self.last_long_ema = Some(long_ema);
+                    return Signal::Sell;
+                }
             }
-        } else if !self.has_crossed {
-            self.time_in_state = 0;
         }
 
         // Update last values
